@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, height=1920">
+<title>SWOT Crypto Planner – Splash Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #050d1f;
+    --deep:    #0a0f2e;
+    --mid:     #130d3a;
+    --purple:  #3d1a78;
+    --violet:  #6b21a8;
+    --gold:    #d4af37;
+    --gold-l:  #ffe566;
+    --teal:    #00c8ac;
+    --amber:   #f97316;
+    --white:   #ffffff;
+    --muted:   rgba(255,255,255,0.55);
+  }
+
+  html, body {
+    width: 1080px;
+    height: 1920px;
+    overflow: hidden;
+    background: var(--navy);
+  }
+
+  /* ── BACKGROUND ─────────────────────────────────────── */
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%,   #0e2050 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 10% 30%,  #1a0a5e 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 90% 60%,  #4c0d8f 0%, transparent 55%),
+      radial-gradient(ellipse 90% 60% at 50% 100%, #6b21a8 0%, transparent 65%),
+      linear-gradient(175deg, #050d1f 0%, #0d0a2e 30%, #1e0a4a 60%, #3d1278 85%, #5b1aa0 100%);
+  }
+
+  /* Noise texture overlay */
+  .noise {
+    position: absolute; inset: 0;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+  }
+
+  /* ── MARKET CHART LINES (bg decoration) ─────────────── */
+  .chart-lines {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 900px;
+    opacity: 0.10;
+  }
+  .chart-lines svg { width: 100%; height: 100%; }
+
+  /* ── STAR PARTICLES ──────────────────────────────────── */
+  .particles {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: white;
+    animation: twinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s);
+  }
+  @keyframes twinkle {
+    0%,100% { opacity: 0.15; transform: scale(1); }
+    50%      { opacity: 0.9;  transform: scale(1.6); }
+  }
+
+  /* ── GLOWING ORBS ────────────────────────────────────── */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+  }
+  .orb-1 { width:600px; height:600px; top:-120px; left:-100px;  background:rgba(30,60,160,0.35); animation: drift1 12s ease-in-out infinite; }
+  .orb-2 { width:500px; height:500px; top:500px;  right:-80px;  background:rgba(100,20,180,0.30); animation: drift2 15s ease-in-out infinite; }
+  .orb-3 { width:700px; height:700px; bottom:-100px; left:50%;  transform:translateX(-50%); background:rgba(107,33,168,0.40); animation: drift3 10s ease-in-out infinite; }
+  .orb-4 { width:300px; height:300px; top:800px;  left:50px;    background:rgba(0,200,172,0.12); animation: drift1 18s ease-in-out infinite reverse; }
+  @keyframes drift1 { 0%,100%{transform:translate(0,0)}   50%{transform:translate(40px,60px)} }
+  @keyframes drift2 { 0%,100%{transform:translate(0,0)}   50%{transform:translate(-50px,30px)} }
+  @keyframes drift3 { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-40px)} }
+
+  /* ── POLAROID NOTES ──────────────────────────────────── */
+  .polaroids { position: absolute; inset: 0; pointer-events: none; }
+
+  .polaroid {
+    position: absolute;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 18px 18px 28px;
+    box-shadow:
+      0 8px 32px rgba(0,0,0,0.45),
+      0 0 0 1px rgba(255,255,255,0.06) inset,
+      0 1px 0 rgba(255,255,255,0.2) inset;
+    animation: floatIn 1.2s cubic-bezier(.22,.68,0,1.2) both;
+  }
+  /* Polaroid bottom white strip */
+  .polaroid::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 28px;
+    background: rgba(255,255,255,0.06);
+    border-top: 1px solid rgba(255,255,255,0.12);
+    border-radius: 0 0 6px 6px;
+  }
+
+  .polaroid .pin {
+    position: absolute;
+    top: -10px; left: 50%; transform: translateX(-50%);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.6);
+  }
+  .polaroid .pin::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+  }
+
+  .polaroid .label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+  }
+  .polaroid .content {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.4;
+  }
+  .polaroid .icon {
+    font-size: 32px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .polaroid .accent { color: var(--gold-l); font-weight: 500; }
+  .polaroid .teal   { color: var(--teal); }
+  .polaroid .amber  { color: var(--amber); }
+
+  /* Individual polaroid positions */
+  .p1 { width:230px; left:30px;  top:90px;  rotate: -6deg; animation-delay:0.1s; border-top: 3px solid rgba(0,200,172,0.6); }
+  .p2 { width:210px; right:40px; top:140px; rotate: 5deg;  animation-delay:0.25s; border-top: 3px solid rgba(212,175,55,0.6); }
+  .p3 { width:250px; left:20px;  top:340px; rotate: 3deg;  animation-delay:0.4s; border-top: 3px solid rgba(249,115,22,0.6); }
+  .p4 { width:200px; right:30px; top:320px; rotate: -4deg; animation-delay:0.15s; border-top: 3px solid rgba(107,33,168,0.8); }
+  .p5 { width:220px; left:50px;  top:560px; rotate: -2deg; animation-delay:0.5s; border-top: 3px solid rgba(212,175,55,0.6); }
+  .p6 { width:200px; right:60px; top:530px; rotate: 6deg;  animation-delay:0.35s; border-top: 3px solid rgba(0,200,172,0.6); }
+  .p7 { width:240px; left:30px;  bottom:340px; rotate: 4deg;  animation-delay:0.6s; border-top: 3px solid rgba(249,115,22,0.6); }
+  .p8 { width:210px; right:35px; bottom:370px; rotate: -5deg; animation-delay:0.45s; border-top: 3px solid rgba(107,33,168,0.8); }
+
+  @keyframes floatIn {
+    from { opacity:0; transform: translateY(30px) scale(0.92) rotate(var(--r, 0deg)); }
+    to   { opacity:1; transform: translateY(0)    scale(1)    rotate(var(--r, 0deg)); }
+  }
+
+  /* Floating animation on polaroids */
+  .p1,.p3,.p7 { animation: floatIn 1.2s cubic-bezier(.22,.68,0,1.2) both, bobA 6s ease-in-out infinite 1.4s; }
+  .p2,.p4,.p8 { animation: floatIn 1.2s cubic-bezier(.22,.68,0,1.2) both, bobB 7s ease-in-out infinite 1.6s; }
+  .p5,.p6     { animation: floatIn 1.2s cubic-bezier(.22,.68,0,1.2) both, bobC 8s ease-in-out infinite 1.8s; }
+
+  @keyframes bobA { 0%,100%{transform:translateY(0)  rotate(-6deg)} 50%{transform:translateY(-8px) rotate(-5deg)} }
+  @keyframes bobB { 0%,100%{transform:translateY(0)  rotate(5deg)}  50%{transform:translateY(-6px) rotate(4deg)}  }
+  @keyframes bobC { 0%,100%{transform:translateY(0)  rotate(-2deg)} 50%{transform:translateY(-10px) rotate(-1deg)} }
+
+  /* ── GRID LINES (subtle) ─────────────────────────────── */
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 120px 120px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
+  }
+
+  /* ── CENTER CONTENT ──────────────────────────────────── */
+  .center {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 860px;
+  }
+
+  /* Icon badge */
+  .app-icon {
+    width: 140px; height: 140px;
+    border-radius: 36px;
+    margin: 0 auto 32px;
+    background: linear-gradient(135deg, #0d1a3a 0%, #1a0a4a 100%);
+    border: 2px solid rgba(212,175,55,0.5);
+    box-shadow:
+      0 0 0 6px rgba(212,175,55,0.08),
+      0 0 60px rgba(212,175,55,0.25),
+      0 24px 64px rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    animation: iconReveal 1s cubic-bezier(.22,.68,0,1.4) 0.3s both;
+  }
+  .app-icon::before {
+    content: '';
+    position: absolute; inset: -2px;
+    border-radius: 38px;
+    background: conic-gradient(from 0deg, var(--gold), transparent, var(--gold));
+    opacity: 0.4;
+    animation: spin 8s linear infinite;
+    z-index: -1;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes iconReveal {
+    from { opacity:0; transform:scale(0.7) translateY(-20px); }
+    to   { opacity:1; transform:scale(1)   translateY(0); }
+  }
+
+  /* SWOT 2x2 inside icon */
+  .swot-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+    width: 88px; height: 88px;
+  }
+  .sq {
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .sq.tl { background: rgba(0,195,168,0.8); }
+  .sq.tr { background: rgba(225,100,18,0.8); }
+  .sq.bl { background: rgba(128,48,218,0.8); }
+  .sq.br { background: rgba(22,188,88,0.8); }
+
+  /* App name */
+  .app-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 94px;
+    letter-spacing: 0.12em;
+    color: #ffffff;
+    line-height: 0.95;
+    text-shadow:
+      0 0 40px rgba(212,175,55,0.5),
+      0 0 80px rgba(212,175,55,0.2),
+      0 0 120px rgba(107,33,168,0.4);
+    animation: nameReveal 1.1s cubic-bezier(.22,.68,0,1.2) 0.55s both;
+    position: relative;
+  }
+  .app-name .word-crypto {
+    color: var(--gold-l);
+    text-shadow:
+      0 0 30px rgba(255,229,102,0.7),
+      0 0 60px rgba(212,175,55,0.4);
+  }
+  .app-name .line2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 38px;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.7);
+    display: block;
+    text-shadow: 0 0 20px rgba(212,175,55,0.3);
+    margin-top: 8px;
+  }
+  @keyframes nameReveal {
+    from { opacity:0; transform:translateY(24px); letter-spacing:0.25em; }
+    to   { opacity:1; transform:translateY(0);    }
+  }
+
+  /* Gold divider */
+  .divider {
+    width: 320px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 28px auto;
+    animation: fadeIn 0.8s ease 1s both;
+  }
+  .divider-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    margin: -4px auto 0;
+    box-shadow: 0 0 12px var(--gold);
+    animation: fadeIn 0.8s ease 1s both;
+  }
+
+  /* Tagline */
+  .tagline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.5;
+    max-width: 680px;
+    margin: 0 auto;
+    animation: fadeIn 0.9s ease 1.1s both;
+  }
+  .tagline strong {
+    color: rgba(255,255,255,0.9);
+    font-weight: 500;
+  }
+
+  /* ── SWOT TAG PILLS ──────────────────────────────────── */
+  .pills {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    margin-top: 36px;
+    animation: fadeIn 0.9s ease 1.3s both;
+  }
+  .pill {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 20px;
+    border-radius: 100px;
+    border: 1px solid;
+    backdrop-filter: blur(12px);
+  }
+  .pill.s { color: var(--teal);  border-color: rgba(0,200,172,0.4);  background: rgba(0,200,172,0.08); }
+  .pill.w { color: var(--amber); border-color: rgba(249,115,22,0.4); background: rgba(249,115,22,0.08); }
+  .pill.o { color: var(--gold-l);border-color: rgba(255,229,102,0.4);background: rgba(255,229,102,0.06); }
+  .pill.t { color: #c084fc;      border-color: rgba(192,132,252,0.4);background: rgba(192,132,252,0.08); }
+
+  /* ── LOADING COIN ─────────────────────────────────────── */
+  .bottom-area {
+    position: absolute;
+    bottom: 90px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    animation: fadeIn 0.8s ease 1.5s both;
+  }
+
+  .coin-spinner {
+    width: 56px; height: 56px;
+    margin: 0 auto 18px;
+    position: relative;
+  }
+  .coin-outer {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 2px solid rgba(212,175,55,0.2);
+    border-top-color: var(--gold);
+    border-right-color: rgba(212,175,55,0.6);
+    animation: coinSpin 1.4s cubic-bezier(0.68,-0.55,0.27,1.55) infinite;
+    position: relative;
+  }
+  .coin-inner {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px; bottom: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,175,55,0.15);
+    border-bottom-color: var(--gold-l);
+    animation: coinSpin 0.9s linear infinite reverse;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .coin-symbol {
+    font-size: 17px;
+    color: var(--gold-l);
+    animation: counterSpin 0.9s linear infinite;
+    text-shadow: 0 0 12px rgba(255,229,102,0.8);
+  }
+  @keyframes coinSpin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes counterSpin {
+    to { transform: rotate(-360deg); }
+  }
+
+  .loading-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+  }
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.6s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0%  { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  /* ── CRYPTO TICKER STRIP ─────────────────────────────── */
+  .ticker {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 52px;
+    background: rgba(255,255,255,0.03);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center;
+    overflow: hidden;
+  }
+  .ticker-track {
+    display: flex; gap: 48px;
+    animation: tickerScroll 20s linear infinite;
+    white-space: nowrap;
+    padding: 0 24px;
+  }
+  .ticker-item {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .ticker-sym { color: rgba(255,255,255,0.5); font-weight: 500; }
+  .ticker-up  { color: #22c55e; }
+  .ticker-dn  { color: #ef4444; }
+  @keyframes tickerScroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  /* ── VERSION TAG ──────────────────────────────────────── */
+  .version {
+    position: absolute;
+    bottom: 64px; right: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.15em;
+  }
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="bg"></div>
+<div class="noise"></div>
+<div class="grid"></div>
+
+<!-- Glowing orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+<div class="orb orb-4"></div>
+
+<!-- Market chart lines background -->
+<div class="chart-lines">
+  <svg viewBox="0 0 1080 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00c8ac" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#00c8ac" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <!-- Main rising line -->
+    <polyline points="0,700 120,650 200,680 280,580 360,540 440,490 520,420 580,380 640,340 700,280 760,300 820,220 900,180 980,140 1080,90"
+      fill="none" stroke="#00c8ac" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Area fill -->
+    <polygon points="0,700 120,650 200,680 280,580 360,540 440,490 520,420 580,380 640,340 700,280 760,300 820,220 900,180 980,140 1080,90 1080,900 0,900"
+      fill="url(#chartGrad)" opacity="0.15"/>
+    <!-- Secondary line -->
+    <polyline points="0,800 150,760 250,780 380,720 460,680 560,640 660,590 740,550 840,500 920,460 1080,400"
+      fill="none" stroke="rgba(212,175,55,0.4)" stroke-width="1.5" stroke-dasharray="8 4"/>
+    <!-- Grid lines -->
+    <line x1="0" y1="200" x2="1080" y2="200" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <line x1="0" y1="400" x2="1080" y2="400" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <line x1="0" y1="600" x2="1080" y2="600" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <line x1="0" y1="800" x2="1080" y2="800" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+  </svg>
+</div>
+
+<!-- Star particles -->
+<div class="particles" id="particles"></div>
+
+<!-- POLAROID NOTES -->
+<div class="polaroids">
+
+  <!-- P1: Strengths - Resilient Investor -->
+  <div class="polaroid p1">
+    <div class="pin"></div>
+    <div class="label teal">S · Strengths</div>
+    <span class="icon">💪</span>
+    <div class="content"><span class="accent">Resilient Investor</span><br>Stay strong through volatility</div>
+  </div>
+
+  <!-- P2: BTC token symbol -->
+  <div class="polaroid p2">
+    <div class="pin"></div>
+    <div class="label" style="color:rgba(255,229,102,0.6)">₿ Token</div>
+    <span class="icon">🪙</span>
+    <div class="content"><span class="accent">Bitcoin</span><br><span style="font-size:13px;color:rgba(255,255,255,0.6)">BTC · $67,420</span></div>
+  </div>
+
+  <!-- P3: Weaknesses -->
+  <div class="polaroid p3">
+    <div class="pin"></div>
+    <div class="label amber">W · Weaknesses</div>
+    <span class="icon">⚠️</span>
+    <div class="content"><span class="amber">Manage Risk</span><br>Assess exposure & set stop-loss</div>
+  </div>
+
+  <!-- P4: Wallet icon -->
+  <div class="polaroid p4">
+    <div class="pin"></div>
+    <div class="label" style="color:rgba(192,132,252,0.7)">🔐 Wallet</div>
+    <span class="icon">👛</span>
+    <div class="content">Portfolio<br><span style="font-size:13px;color:rgba(255,255,255,0.6)">Secured · Multi-chain</span></div>
+  </div>
+
+  <!-- P5: Opportunities - Airdrop Alerts -->
+  <div class="polaroid p5">
+    <div class="pin"></div>
+    <div class="label" style="color:rgba(255,229,102,0.6)">O · Opportunities</div>
+    <span class="icon">🚀</span>
+    <div class="content"><span class="accent">Airdrop Alerts</span><br>Catch the next big drop</div>
+  </div>
+
+  <!-- P6: Trending graph -->
+  <div class="polaroid p6">
+    <div class="pin"></div>
+    <div class="label teal">📈 Trending</div>
+    <span class="icon">📊</span>
+    <div class="content"><span class="teal">+24.7% ↑</span><br><span style="font-size:13px;color:rgba(255,255,255,0.6)">SOL · 7d bull run</span></div>
+  </div>
+
+  <!-- P7: Threats -->
+  <div class="polaroid p7">
+    <div class="pin"></div>
+    <div class="label" style="color:rgba(192,132,252,0.7)">T · Threats</div>
+    <span class="icon">🛡️</span>
+    <div class="content">Market <span style="color:#c084fc;font-weight:500">Volatility</span><br>Hedge & diversify smartly</div>
+  </div>
+
+  <!-- P8: ETH token -->
+  <div class="polaroid p8">
+    <div class="pin"></div>
+    <div class="label amber">Ξ Ethereum</div>
+    <span class="icon">💎</span>
+    <div class="content"><span class="amber">ETH</span> · $3,812<br><span style="font-size:13px;color:rgba(255,255,255,0.6)">Staking rewards: 4.2%</span></div>
+  </div>
+
+</div>
+
+<!-- ── CENTER CONTENT ── -->
+<div class="center">
+
+  <!-- App icon badge -->
+  <div class="app-icon">
+    <div class="swot-grid">
+      <div class="sq tl">⭐</div>
+      <div class="sq tr">⚠️</div>
+      <div class="sq bl">💡</div>
+      <div class="sq br">🛡️</div>
+    </div>
+  </div>
+
+  <!-- App name -->
+  <div class="app-name">
+    SWOT<br>
+    <span class="word-crypto">CRYPTO</span><br>
+    <span class="line2">Planner</span>
+  </div>
+
+  <!-- Divider -->
+  <div class="divider"></div>
+  <div class="divider-dot"></div>
+
+  <!-- Tagline -->
+  <p class="tagline">
+    <strong>Strategize</strong> Your Crypto Journey<br>with <strong>SWOT Insights</strong>
+  </p>
+
+  <!-- SWOT pills -->
+  <div class="pills">
+    <div class="pill s">Strengths</div>
+    <div class="pill w">Weaknesses</div>
+    <div class="pill o">Opportunities</div>
+    <div class="pill t">Threats</div>
+  </div>
+
+</div>
+
+<!-- ── LOADING AREA ── -->
+<div class="bottom-area">
+  <div class="coin-spinner">
+    <div class="coin-outer">
+      <div class="coin-inner">
+        <span class="coin-symbol">₿</span>
+      </div>
+    </div>
+  </div>
+  <div class="loading-text">Initializing<span class="loading-dots"></span></div>
+</div>
+
+<!-- ── CRYPTO TICKER ── -->
+<div class="ticker">
+  <div class="ticker-track">
+    <div class="ticker-item"><span class="ticker-sym">BTC</span><span class="ticker-up">▲ +2.4%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ETH</span><span class="ticker-up">▲ +1.8%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">SOL</span><span class="ticker-up">▲ +5.2%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">BNB</span><span class="ticker-dn">▼ -0.9%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ADA</span><span class="ticker-up">▲ +3.1%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">DOT</span><span class="ticker-dn">▼ -1.2%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">AVAX</span><span class="ticker-up">▲ +4.7%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">MATIC</span><span class="ticker-up">▲ +2.0%</span></div>
+    <!-- Duplicate for seamless scroll -->
+    <div class="ticker-item"><span class="ticker-sym">BTC</span><span class="ticker-up">▲ +2.4%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ETH</span><span class="ticker-up">▲ +1.8%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">SOL</span><span class="ticker-up">▲ +5.2%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">BNB</span><span class="ticker-dn">▼ -0.9%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ADA</span><span class="ticker-up">▲ +3.1%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">DOT</span><span class="ticker-dn">▼ -1.2%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">AVAX</span><span class="ticker-up">▲ +4.7%</span></div>
+    <div class="ticker-item"><span class="ticker-sym">MATIC</span><span class="ticker-up">▲ +2.0%</span></div>
+  </div>
+</div>
+
+<div class="version">v2.0.1</div>
+
+<script>
+// Generate star particles
+const container = document.getElementById('particles');
+const count = 80;
+for (let i = 0; i < count; i++) {
+  const star = document.createElement('div');
+  star.className = 'star';
+  star.style.left   = Math.random() * 100 + '%';
+  star.style.top    = Math.random() * 100 + '%';
+  star.style.setProperty('--d', (2 + Math.random() * 4) + 's');
+  star.style.setProperty('--delay', (-Math.random() * 4) + 's');
+  const s = 1.5 + Math.random() * 3;
+  star.style.width = s + 'px';
+  star.style.height = s + 'px';
+  star.style.opacity = Math.random() * 0.6 + 0.1;
+  container.appendChild(star);
+}
+</script>
+</body>
+</html>
