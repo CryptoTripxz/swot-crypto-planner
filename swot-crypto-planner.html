@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SWOT Crypto">
+<title>SWOT Crypto Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:#00E676;--green-soft:rgba(0,230,118,0.15);--green-glow:rgba(0,230,118,0.35);
+  --blue:#448AFF;--blue-soft:rgba(68,138,255,0.15);--blue-glow:rgba(68,138,255,0.35);
+  --yellow:#FFD600;--yellow-soft:rgba(255,214,0,0.15);--yellow-glow:rgba(255,214,0,0.3);
+  --pink:#FF4081;--pink-soft:rgba(255,64,129,0.15);--pink-glow:rgba(255,64,129,0.35);
+  --gold:#FFB300;--purple:#7C4DFF;
+  --bg:#060910;--surface:#0D1220;--surface2:#131A2C;--surface3:#1A2238;
+  --border:rgba(255,255,255,0.07);--border-light:rgba(255,255,255,0.12);
+  --text:#EEF2FF;--text-2:#A8B4CC;--text-muted:#5A6A88;
+  --nav-height:82px;--touch:48px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+html,body{width:100%;height:100%;overscroll-behavior:none;}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;max-width:430px;margin:0 auto;min-height:100svh;overflow:hidden;position:relative;}
+.screen{display:none;flex-direction:column;height:100svh;overflow:hidden;position:relative;}
+.screen.active{display:flex;}
+.di-spacer{height:calc(59px + env(safe-area-inset-top,14px));flex-shrink:0;position:relative;}
+.di-pill{position:absolute;top:calc(env(safe-area-inset-top,14px) + 10px);left:50%;transform:translateX(-50%);width:126px;height:37px;background:#000;border-radius:20px;z-index:999;box-shadow:0 0 0 1px rgba(255,255,255,0.08);pointer-events:none;}
+.status-row{position:absolute;top:calc(env(safe-area-inset-top,14px)+16px);left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:0 22px;pointer-events:none;z-index:998;}
+.status-time{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.3px;}
+.status-icons{display:flex;align-items:center;gap:6px;}
+.token-pill-sm{background:linear-gradient(120deg,#FFB300,#FF6D00);color:#000;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;pointer-events:all;cursor:pointer;}
+.nav-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nav-height);background:rgba(10,14,26,0.93);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border-top:0.5px solid var(--border-light);display:flex;align-items:flex-start;padding-top:10px;padding-bottom:env(safe-area-inset-bottom,34px);z-index:500;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:4px 0;cursor:pointer;position:relative;min-height:var(--touch);transition:transform 0.15s ease;}
+.nav-item:active{transform:scale(0.88);}
+.nav-icon{font-size:24px;line-height:1;transition:filter 0.2s;}
+.nav-label{font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:0.4px;text-transform:uppercase;transition:color 0.2s;}
+.nav-item.active .nav-label{color:var(--text);}
+.nav-item::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%) scaleX(0);width:40px;height:3px;border-radius:3px;transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1);}
+.nav-item.active::before{transform:translateX(-50%) scaleX(1);}
+.nav-item:nth-child(1)::before{background:var(--green);box-shadow:0 0 8px var(--green-glow);}
+.nav-item:nth-child(2)::before{background:var(--blue);box-shadow:0 0 8px var(--blue-glow);}
+.nav-item:nth-child(3)::before{background:var(--gold);box-shadow:0 0 8px rgba(255,179,0,0.5);}
+.page-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:var(--nav-height);}
+.page-scroll::-webkit-scrollbar{display:none;}
+.page-header{padding:10px 20px 14px;}
+.page-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:900;line-height:1;background:linear-gradient(100deg,#EEF2FF 0%,#8B9EC7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.page-sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:4px;display:flex;align-items:center;gap:6px;}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 1.8s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+.matrix-controls{padding:0 20px 12px;display:flex;flex-direction:column;gap:10px;}
+.search-row{display:flex;gap:8px;align-items:center;}
+.search-wrap{flex:1;position:relative;}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--text-muted);pointer-events:none;}
+.search-input{width:100%;height:var(--touch);background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0 14px 0 40px;color:var(--text);font-family:'Outfit',sans-serif;font-size:15px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+.search-input::placeholder{color:var(--text-muted);}
+.search-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft);}
+.icon-btn{width:var(--touch);height:var(--touch);border-radius:14px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:all 0.15s;}
+.icon-btn:active{transform:scale(0.9);background:var(--surface3);}
+.gen-btn{height:var(--touch);background:linear-gradient(120deg,#00E676 0%,#00B0FF 55%,#448AFF 100%);color:#060910;border:none;border-radius:14px;padding:0 20px;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.15s;box-shadow:0 6px 24px rgba(0,230,118,0.3);letter-spacing:0.2px;}
+.gen-btn:active{transform:scale(0.97);box-shadow:0 2px 8px rgba(0,230,118,0.2);}
+.axis-strip{display:grid;grid-template-columns:1fr 1fr;padding:0 16px;margin-bottom:4px;}
+.axis-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;text-align:center;}
+.matrix-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px;margin:0 14px;border-radius:22px;overflow:hidden;background:rgba(255,255,255,0.03);flex:1;min-height:0;}
+.quadrant{background:var(--surface);padding:13px 11px 11px;display:flex;flex-direction:column;gap:8px;overflow:hidden;position:relative;min-height:0;}
+.quad-tl{border-radius:20px 0 0 0;}.quad-tr{border-radius:0 20px 0 0;}.quad-bl{border-radius:0 0 0 20px;}.quad-br{border-radius:0 0 20px 0;}
+.quadrant::before{content:'';position:absolute;inset:0;opacity:0.07;pointer-events:none;}
+.quad-tl::before{background:radial-gradient(ellipse at 20% 20%,var(--green),transparent 65%);}
+.quad-tr::before{background:radial-gradient(ellipse at 80% 20%,var(--blue),transparent 65%);}
+.quad-bl::before{background:radial-gradient(ellipse at 20% 80%,var(--yellow),transparent 65%);}
+.quad-br::before{background:radial-gradient(ellipse at 80% 80%,var(--pink),transparent 65%);}
+.quad-header{display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.quad-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.quad-tl .quad-dot{background:var(--green);box-shadow:0 0 6px var(--green-glow);}
+.quad-tr .quad-dot{background:var(--blue);box-shadow:0 0 6px var(--blue-glow);}
+.quad-bl .quad-dot{background:var(--yellow);box-shadow:0 0 6px var(--yellow-glow);}
+.quad-br .quad-dot{background:var(--pink);box-shadow:0 0 6px var(--pink-glow);}
+.quad-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;}
+.quad-tl .quad-title{color:var(--green);}.quad-tr .quad-title{color:var(--blue);}.quad-bl .quad-title{color:var(--yellow);}.quad-br .quad-title{color:var(--pink);}
+.quad-count{margin-left:auto;flex-shrink:0;font-size:10px;font-family:'Space Mono',monospace;background:var(--surface3);border:1px solid var(--border);padding:2px 7px;border-radius:8px;color:var(--text-muted);}
+.task-cards{display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;min-height:0;padding-right:1px;}
+.task-cards::-webkit-scrollbar{width:2px;}
+.task-cards::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.task-card{background:var(--surface2);border-radius:12px;padding:9px 10px 9px 9px;border-left:3px solid transparent;cursor:grab;position:relative;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 2px 10px rgba(0,0,0,0.45);flex-shrink:0;animation:cardIn 0.28s ease backwards;}
+.task-card:nth-child(1){animation-delay:0.04s;}.task-card:nth-child(2){animation-delay:0.10s;}.task-card:nth-child(3){animation-delay:0.16s;}
+.task-card:active{transform:scale(0.96);cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,0.6);}
+.task-card.dragging{opacity:0.6;transform:rotate(2deg) scale(1.03);box-shadow:0 14px 40px rgba(0,0,0,0.7);}
+.quad-tl .task-card{border-left-color:var(--green);}.quad-tr .task-card{border-left-color:var(--blue);}.quad-bl .task-card{border-left-color:var(--yellow);}.quad-br .task-card{border-left-color:var(--pink);}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.97);}to{opacity:1;transform:none;}}
+.card-top{display:flex;align-items:flex-start;gap:8px;}
+.card-checkbox{width:18px;height:18px;border-radius:6px;flex-shrink:0;border:1.5px solid var(--text-muted);margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all 0.2s;background:transparent;}
+.card-checkbox.checked{font-size:12px;color:#060910;}
+.quad-tl .card-checkbox.checked{background:var(--green);border-color:var(--green);}
+.quad-tr .card-checkbox.checked{background:var(--blue);border-color:var(--blue);}
+.quad-bl .card-checkbox.checked{background:var(--yellow);border-color:var(--yellow);}
+.quad-br .card-checkbox.checked{background:var(--pink);border-color:var(--pink);}
+.card-body{flex:1;min-width:0;}
+.card-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word;}
+.card-title.done{text-decoration:line-through;color:var(--text-muted);}
+.card-meta{display:flex;align-items:center;gap:5px;margin-top:5px;flex-wrap:wrap;}
+.priority-tag{font-size:9px;font-weight:700;font-family:'Space Mono',monospace;padding:2px 6px;border-radius:5px;text-transform:uppercase;}
+.tag-high{background:var(--pink-soft);color:var(--pink);}.tag-med{background:var(--yellow-soft);color:var(--yellow);}.tag-low{background:var(--blue-soft);color:var(--blue);}
+.card-date{font-size:9px;color:var(--text-muted);font-family:'Space Mono',monospace;}
+.card-icon{font-size:12px;opacity:0.75;}
+.add-card-btn{background:transparent;border:1px dashed var(--border);border-radius:10px;padding:7px;width:100%;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:4px;flex-shrink:0;min-height:34px;}
+.add-card-btn:active{background:var(--surface3);}
+.swot-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;margin-bottom:14px;}
+.swot-cell{background:var(--surface);border-radius:18px;padding:15px 13px 13px;display:flex;flex-direction:column;gap:9px;border:1px solid var(--border);position:relative;overflow:hidden;min-height:148px;}
+.swot-cell::after{content:attr(data-letter);position:absolute;right:-4px;bottom:-10px;font-family:'Syne',sans-serif;font-size:64px;font-weight:900;opacity:0.04;line-height:1;pointer-events:none;}
+.swot-s{border-top:2px solid var(--green);}.swot-w{border-top:2px solid var(--pink);}.swot-o{border-top:2px solid var(--blue);}.swot-t{border-top:2px solid var(--yellow);}
+.swot-badge{display:inline-flex;align-items:center;font-family:'Syne',sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:3px 9px;border-radius:8px;width:fit-content;}
+.swot-s .swot-badge{background:var(--green-soft);color:var(--green);}.swot-w .swot-badge{background:var(--pink-soft);color:var(--pink);}.swot-o .swot-badge{background:var(--blue-soft);color:var(--blue);}.swot-t .swot-badge{background:var(--yellow-soft);color:var(--yellow);}
+.swot-items{display:flex;flex-direction:column;gap:5px;flex:1;}
+.swot-item{font-size:11px;color:var(--text-2);display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--surface2);border-radius:8px;cursor:pointer;transition:background 0.2s;min-height:30px;}
+.swot-item:active{background:var(--surface3);}
+.swot-pip{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.swot-s .swot-pip{background:var(--green);}.swot-w .swot-pip{background:var(--pink);}.swot-o .swot-pip{background:var(--blue);}.swot-t .swot-pip{background:var(--yellow);}
+.swot-add-btn{background:transparent;border:none;padding:0;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;gap:4px;margin-top:auto;}
+.gen-swot-btn{display:flex;align-items:center;justify-content:center;gap:9px;margin:0 14px 14px;background:linear-gradient(120deg,#448AFF,var(--purple));color:#fff;border:none;border-radius:16px;height:54px;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer;transition:all 0.15s;box-shadow:0 6px 24px rgba(68,138,255,0.3);}
+.gen-swot-btn:active{transform:scale(0.97);box-shadow:none;}
+.ai-insight-card{margin:0 14px 14px;background:linear-gradient(135deg,rgba(68,138,255,0.08),rgba(124,77,255,0.08));border:1px solid rgba(68,138,255,0.18);border-radius:16px;padding:15px;}
+.ai-card-header{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;}
+.ai-card-body{font-size:13px;color:var(--text-2);line-height:1.6;}
+.ai-card-body strong{color:var(--text);}
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.ai-chip{font-size:10px;font-family:'Space Mono',monospace;padding:4px 10px;border-radius:20px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.ai-chip:active{transform:scale(0.94);}
+.chip-green{background:var(--green-soft);color:var(--green);border:1px solid rgba(0,230,118,0.2);}
+.chip-blue{background:var(--blue-soft);color:var(--blue);border:1px solid rgba(68,138,255,0.2);}
+.chip-pink{background:var(--pink-soft);color:var(--pink);border:1px solid rgba(255,64,129,0.2);}
+.xp-hero{margin:0 14px 14px;background:linear-gradient(135deg,#FF8F00 0%,#FF3D00 100%);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(255,87,0,0.3);}
+.xp-hero::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.08);}
+.xp-hero::after{content:'🏆';position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:48px;opacity:0.22;}
+.xp-coin{font-size:38px;}
+.xp-amount{font-family:'Space Mono',monospace;font-size:36px;font-weight:700;color:#000;line-height:1;}
+.xp-label{font-size:12px;color:rgba(0,0,0,0.65);font-weight:600;margin-top:3px;}
+.xp-level{position:absolute;top:14px;right:74px;background:rgba(0,0,0,0.2);color:#000;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;padding:3px 10px;border-radius:20px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;margin-bottom:14px;}
+.stat-tile{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 13px;display:flex;flex-direction:column;gap:5px;}
+.stat-tile-label{font-size:10px;color:var(--text-muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.4px;}
+.stat-tile-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:900;line-height:1;}
+.stat-tile-change{font-size:11px;font-weight:600;}
+.up{color:var(--green);}.down{color:var(--pink);}.warn{color:var(--yellow);}
+.section-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px;}
+.progress-section{padding:0 14px;margin-bottom:14px;}
+.prog-item{margin-bottom:11px;}
+.prog-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.prog-name{font-size:13px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:6px;}
+.prog-pct{font-size:11px;font-family:'Space Mono',monospace;}
+.prog-track{height:7px;background:var(--surface2);border-radius:7px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:7px;transition:width 0.7s cubic-bezier(0.34,1.4,0.64,1);}
+.chart-section{padding:0 14px;margin-bottom:14px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.chart-card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);}
+.chart-badge{font-size:10px;background:var(--green-soft);color:var(--green);padding:3px 9px;border-radius:20px;font-family:'Space Mono',monospace;font-weight:700;}
+.chart-svg{width:100%;display:block;overflow:visible;}
+.achieve-section{padding:0 14px;margin-bottom:14px;}
+.achieve-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+.achieve-row::-webkit-scrollbar{display:none;}
+.badge{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;min-width:74px;transition:all 0.2s;cursor:pointer;}
+.badge:active{transform:scale(0.93);}
+.badge.unlocked{border-color:var(--gold);background:rgba(255,179,0,0.06);}
+.badge-icon{font-size:26px;}
+.badge-name{font-size:9px;color:var(--text-muted);font-family:'Space Mono',monospace;text-align:center;font-weight:700;}
+.badge.unlocked .badge-name{color:var(--gold);}
+.export-section{padding:0 14px 14px;}
+.export-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.export-btn{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;transition:all 0.15s;min-height:var(--touch);}
+.export-btn:active{transform:scale(0.95);background:var(--surface3);}
+.export-x{background:linear-gradient(135deg,#111,#2a2a2a);border-color:#3a3a3a;}
+.export-img{background:linear-gradient(135deg,var(--blue-soft),rgba(124,77,255,0.12));border-color:rgba(68,138,255,0.25);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:600;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.bottom-sheet{background:var(--surface);border-radius:26px 26px 0 0;padding:16px 20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,34px));width:100%;max-width:430px;animation:sheetUp 0.32s cubic-bezier(0.34,1.4,0.64,1);border-top:0.5px solid var(--border-light);}
+@keyframes sheetUp{from{transform:translateY(110%);}to{transform:translateY(0);}}
+.sheet-handle{width:44px;height:5px;background:var(--surface3);border-radius:5px;margin:0 auto 16px;}
+.sheet-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:12px;}
+.sort-opt{height:var(--touch);padding:0 14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;gap:12px;font-size:15px;color:var(--text);transition:background 0.15s;margin-bottom:4px;}
+.sort-opt:active{background:var(--surface2);}
+.sort-opt.selected{background:var(--blue-soft);color:var(--blue);}
+.sort-icon{font-size:20px;}
+.toast{position:fixed;bottom:calc(var(--nav-height) + 12px);left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface3);border:1px solid var(--border-light);border-radius:14px;padding:11px 18px;color:var(--text);font-size:13px;font-weight:500;opacity:0;transition:opacity 0.25s,transform 0.25s;z-index:700;white-space:nowrap;max-width:88%;display:flex;align-items:center;gap:8px;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: MATRIX -->
+<div class="screen active" id="screen1">
+  <div class="di-spacer">
+    <div class="di-pill"></div>
+    <div class="status-row">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <div class="token-pill-sm" onclick="switchScreen(3)">🪙 240 XP</div>
+        <span style="font-size:13px;color:var(--text);">▊▊▊</span>
+      </div>
+    </div>
+  </div>
+  <div class="page-header" style="padding-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div class="page-title">Priority Matrix</div>
+        <div class="page-sub"><span class="live-dot"></span>12 tasks · Wed 25 Feb</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:2px;">
+        <div class="icon-btn" onclick="showToast('📤 Opening share sheet...')">📤</div>
+        <div class="icon-btn" onclick="openSort()">⚙️</div>
+      </div>
+    </div>
+  </div>
+  <div class="matrix-controls">
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" type="search" placeholder="Search tasks…" oninput="filterTasks(this.value)">
+      </div>
+      <div class="icon-btn" onclick="openSort()">↕</div>
+    </div>
+    <button class="gen-btn" onclick="generateFromSWOT()">✨ Generate from SWOT</button>
+  </div>
+  <div class="axis-strip">
+    <div class="axis-lbl">⬆ Urgent</div>
+    <div class="axis-lbl">⬇ Not Urgent</div>
+  </div>
+  <div class="matrix-grid" id="matrixGrid">
+    <!-- TL -->
+    <div class="quadrant quad-tl" id="quad-do">
+      <div class="quad-header"><div class="quad-dot"></div><span class="quad-title">Just Do It</span><span class="quad-count">3</span></div>
+      <div class="task-cards" id="cards-do">
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Activate Portfolio Stoploss</div><div class="card-meta"><span class="priority-tag tag-high">🔴 High</span><span class="card-icon">📊</span><span class="card-date">Due today</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Rebalance BTC / ETH Ratio</div><div class="card-meta"><span class="priority-tag tag-high">🔴 High</span><span class="card-icon">₿</span><span class="card-date">Due 2h</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox checked" onclick="toggleCheck(this)">✓</div><div class="card-body"><div class="card-title done">Review Gas Fees</div><div class="card-meta"><span class="priority-tag tag-med">🟡 Med</span><span class="card-icon">⛽</span><span class="card-date">Done +20🪙</span></div></div></div></div>
+      </div>
+      <button class="add-card-btn">＋ Add Task</button>
+    </div>
+    <!-- TR -->
+    <div class="quadrant quad-tr" id="quad-schedule">
+      <div class="quad-header"><div class="quad-dot"></div><span class="quad-title">Schedule</span><span class="quad-count">3</span></div>
+      <div class="task-cards" id="cards-schedule">
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Resume Airdrop Hunting</div><div class="card-meta"><span class="priority-tag tag-med">🟡 Med</span><span class="card-icon">📅</span><span class="card-date">Mar 1</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">DCA Strategy Review</div><div class="card-meta"><span class="priority-tag tag-med">🟡 Med</span><span class="card-icon">📈</span><span class="card-date">Mar 5</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Study L2 Protocols</div><div class="card-meta"><span class="priority-tag tag-low">🔵 Low</span><span class="card-icon">📚</span><span class="card-date">Mar 10</span></div></div></div></div>
+      </div>
+      <button class="add-card-btn">＋ Add Task</button>
+    </div>
+    <!-- BL -->
+    <div class="quadrant quad-bl" id="quad-delegate">
+      <div class="quad-header"><div class="quad-dot"></div><span class="quad-title">Delegate</span><span class="quad-count">3</span></div>
+      <div class="task-cards" id="cards-delegate">
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Set Up NFT Accounts</div><div class="card-meta"><span class="priority-tag tag-med">🟡 Med</span><span class="card-icon">🔗</span><span class="card-date">Share →</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Configure Tax Reports</div><div class="card-meta"><span class="priority-tag tag-med">🟡 Med</span><span class="card-icon">📋</span><span class="card-date">Share →</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Wallet Backup Routine</div><div class="card-meta"><span class="priority-tag tag-low">🔵 Low</span><span class="card-icon">💾</span><span class="card-date">Share →</span></div></div></div></div>
+      </div>
+      <button class="add-card-btn">＋ Add Task</button>
+    </div>
+    <!-- BR -->
+    <div class="quadrant quad-br" id="quad-dump">
+      <div class="quad-header"><div class="quad-dot"></div><span class="quad-title">Dump</span><span class="quad-count">3</span></div>
+      <div class="task-cards" id="cards-dump">
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Reduce Distractions</div><div class="card-meta"><span class="priority-tag tag-low">🔵 Low</span><span class="card-icon">🗑️</span><span class="card-date">Someday</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Browse Meme Coins</div><div class="card-meta"><span class="priority-tag tag-low">🔵 Low</span><span class="card-icon">🐸</span><span class="card-date">Someday</span></div></div></div></div>
+        <div class="task-card" draggable="true"><div class="card-top"><div class="card-checkbox" onclick="toggleCheck(this)"></div><div class="card-body"><div class="card-title">Redesign Home Screen</div><div class="card-meta"><span class="priority-tag tag-low">🔵 Low</span><span class="card-icon">🖼️</span><span class="card-date">Delete</span></div></div></div></div>
+      </div>
+      <button class="add-card-btn">＋ Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2: SWOT -->
+<div class="screen" id="screen2">
+  <div class="di-spacer">
+    <div class="di-pill"></div>
+    <div class="status-row">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <div class="token-pill-sm" onclick="switchScreen(3)">🪙 240 XP</div>
+        <span style="font-size:13px;color:var(--text);">▊▊▊</span>
+      </div>
+    </div>
+  </div>
+  <div class="page-header">
+    <div class="page-title">SWOT Analysis</div>
+    <div class="page-sub">Crypto Portfolio · Feb 2026</div>
+  </div>
+  <div class="page-scroll">
+    <div class="swot-grid">
+      <div class="swot-cell swot-s" data-letter="S">
+        <div class="swot-badge">Strengths</div>
+        <div class="swot-items">
+          <div class="swot-item"><div class="swot-pip"></div>Early BTC Position</div>
+          <div class="swot-item"><div class="swot-pip"></div>DeFi Knowledge</div>
+          <div class="swot-item"><div class="swot-pip"></div>Cold Storage Setup</div>
+        </div>
+        <button class="swot-add-btn">＋ Add strength</button>
+      </div>
+      <div class="swot-cell swot-w" data-letter="W">
+        <div class="swot-badge">Weaknesses</div>
+        <div class="swot-items">
+          <div class="swot-item"><div class="swot-pip"></div>No Stop-Loss Set</div>
+          <div class="swot-item"><div class="swot-pip"></div>Over-leveraged</div>
+          <div class="swot-item"><div class="swot-pip"></div>High Altcoin Risk</div>
+        </div>
+        <button class="swot-add-btn">＋ Add weakness</button>
+      </div>
+      <div class="swot-cell swot-o" data-letter="O">
+        <div class="swot-badge">Opportunities</div>
+        <div class="swot-items">
+          <div class="swot-item"><div class="swot-pip"></div>ETF Inflows</div>
+          <div class="swot-item"><div class="swot-pip"></div>L2 Ecosystem</div>
+          <div class="swot-item"><div class="swot-pip"></div>Airdrop Season</div>
+        </div>
+        <button class="swot-add-btn">＋ Add opportunity</button>
+      </div>
+      <div class="swot-cell swot-t" data-letter="T">
+        <div class="swot-badge">Threats</div>
+        <div class="swot-items">
+          <div class="swot-item"><div class="swot-pip"></div>Regulatory Risk</div>
+          <div class="swot-item"><div class="swot-pip"></div>Macro Bear Signal</div>
+          <div class="swot-item"><div class="swot-pip"></div>Exchange Hacks</div>
+        </div>
+        <button class="swot-add-btn">＋ Add threat</button>
+      </div>
+    </div>
+    <button class="gen-swot-btn" onclick="generateFromSWOT()">🤖 &nbsp;Auto-Generate Tasks from SWOT</button>
+    <div class="ai-insight-card">
+      <div class="ai-card-header">🧠 AI Insight</div>
+      <div class="ai-card-body">Your biggest weakness <strong>"No Stop-Loss Set"</strong> maps directly to a <strong>Just Do It</strong> action — do it today. <strong>"Airdrop Season"</strong> is high-value but non-urgent; schedule it for Mar 1. Delegate exchange setups to free cognitive bandwidth.</div>
+      <div class="ai-chips">
+        <div class="ai-chip chip-green" onclick="showToast('✅ Added to Just Do It')">→ Just Do It</div>
+        <div class="ai-chip chip-blue" onclick="showToast('📅 Added to Schedule')">→ Schedule It</div>
+        <div class="ai-chip chip-pink" onclick="showToast('🗑️ Added to Dump')">→ Dump</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: REWARDS -->
+<div class="screen" id="screen3">
+  <div class="di-spacer">
+    <div class="di-pill"></div>
+    <div class="status-row">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <div class="token-pill-sm">🪙 240 XP</div>
+        <span style="font-size:13px;color:var(--text);">▊▊▊</span>
+      </div>
+    </div>
+  </div>
+  <div class="page-header">
+    <div class="page-title">Rewards</div>
+    <div class="page-sub">Your crypto planner progress</div>
+  </div>
+  <div class="page-scroll">
+    <div class="xp-hero">
+      <span class="xp-coin">🪙</span>
+      <div><div class="xp-amount">240 XP</div><div class="xp-label">Tokens earned this month</div></div>
+      <div class="xp-level">Lv 4</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-tile"><div class="stat-tile-label">Tasks Done</div><div class="stat-tile-value" style="color:var(--green);">8</div><div class="stat-tile-change up">↑ +3 this week</div></div>
+      <div class="stat-tile"><div class="stat-tile-label">Completion</div><div class="stat-tile-value" style="color:var(--blue);">67%</div><div class="stat-tile-change up">↑ +12% vs last wk</div></div>
+      <div class="stat-tile"><div class="stat-tile-label">Streak</div><div class="stat-tile-value" style="color:var(--yellow);">🔥 5</div><div class="stat-tile-change warn">Days active</div></div>
+      <div class="stat-tile"><div class="stat-tile-label">Dumped</div><div class="stat-tile-value" style="color:var(--pink);">4</div><div class="stat-tile-change down">↓ Low-pri cleared</div></div>
+    </div>
+    <div class="progress-section">
+      <div class="section-title">Quadrant Completion</div>
+      <div class="prog-item"><div class="prog-row"><span class="prog-name">🟢 Just Do It</span><span class="prog-pct up">33%</span></div><div class="prog-track"><div class="prog-fill" style="width:33%;background:var(--green);box-shadow:0 0 8px var(--green-glow);"></div></div></div>
+      <div class="prog-item"><div class="prog-row"><span class="prog-name">🔵 Schedule It</span><span class="prog-pct" style="color:var(--blue);">0%</span></div><div class="prog-track"><div class="prog-fill" style="width:0%;background:var(--blue);"></div></div></div>
+      <div class="prog-item"><div class="prog-row"><span class="prog-name">🟡 Delegate</span><span class="prog-pct warn">0%</span></div><div class="prog-track"><div class="prog-fill" style="width:0%;background:var(--yellow);"></div></div></div>
+      <div class="prog-item"><div class="prog-row"><span class="prog-name">🔴 Dumped</span><span class="prog-pct down">0%</span></div><div class="prog-track"><div class="prog-fill" style="width:0%;background:var(--pink);"></div></div></div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-card-title">Weekly Completion</div><div class="chart-badge">↑ +12%</div></div>
+        <svg class="chart-svg" viewBox="0 0 360 90" height="90">
+          <line x1="0" y1="0" x2="360" y2="0" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+          <line x1="0" y1="30" x2="360" y2="30" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+          <line x1="0" y1="60" x2="360" y2="60" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+          <line x1="0" y1="88" x2="360" y2="88" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <rect x="10" y="60" width="33" height="28" rx="5" fill="#00E676" opacity="0.5"/>
+          <rect x="58" y="44" width="33" height="44" rx="5" fill="#00E676" opacity="0.65"/>
+          <rect x="106" y="32" width="33" height="56" rx="5" fill="#448AFF" opacity="0.7"/>
+          <rect x="154" y="20" width="33" height="68" rx="5" fill="#448AFF" opacity="0.85"/>
+          <rect x="202" y="48" width="33" height="40" rx="5" fill="#FFD600" opacity="0.7"/>
+          <rect x="250" y="8" width="33" height="80" rx="5" fill="#00E676" opacity="0.95"/>
+          <rect x="298" y="28" width="33" height="60" rx="5" fill="#00E676"/>
+          <text x="26" y="87" font-size="7.5" fill="#5A6A88" font-family="'Space Mono',monospace" text-anchor="middle">Mon</text>
+          <text x="74" y="87" font-size="7.5" fill="#5A6A88" font-family="'Space Mono',monospace" text-anchor="middle">Tue</text>
+          <text x="122" y="87" font-size="7.5" fill="#5A6A88" font-family="'Space Mono',monospace" text-anchor="middle">Wed</text>
+          <text x="170" y="87" font-size="7.5" fill="#5A6A88" font-family="'Space Mono',monospace" text-anchor="middle">Thu</text>
+          <text x="218" y="87" font-size="7.5" fill="#5A6A88" font-family="'Space Mono',monospace" text-anchor="middle">Fri</text>
+          <text x="266" y="87" font-size="7.5" fill="#5A6A88" font-family="'Space Mono',monospace" text-anchor="middle">Sat</text>
+          <text x="314" y="87" font-size="7.5" fill="#448AFF" font-family="'Space Mono',monospace" text-anchor="middle" font-weight="700">Today</text>
+        </svg>
+      </div>
+    </div>
+    <div class="achieve-section">
+      <div class="section-title">Achievements</div>
+      <div class="achieve-row">
+        <div class="badge unlocked" onclick="showToast('🏆 First Task — Unlocked!')"><div class="badge-icon">🏆</div><div class="badge-name">First Task</div></div>
+        <div class="badge unlocked" onclick="showToast('🔥 5-Day Streak!')"><div class="badge-icon">🔥</div><div class="badge-name">5-Day Streak</div></div>
+        <div class="badge unlocked" onclick="showToast('🎯 SWOT Master!')"><div class="badge-icon">🎯</div><div class="badge-name">SWOT Master</div></div>
+        <div class="badge" onclick="showToast('💎 Locked — 100 tasks to go!')"><div class="badge-icon">💎</div><div class="badge-name">100 Tasks</div></div>
+        <div class="badge" onclick="showToast('🚀 Locked — reach Level 10')"><div class="badge-icon">🚀</div><div class="badge-name">Level 10</div></div>
+        <div class="badge" onclick="showToast('🌙 Locked — Night Owl')"><div class="badge-icon">🌙</div><div class="badge-name">Night Owl</div></div>
+      </div>
+    </div>
+    <div class="export-section">
+      <div class="section-title">Export & Share</div>
+      <div class="export-grid">
+        <button class="export-btn export-x" onclick="showToast('𝕏 Shared to X!')">𝕏 Share Matrix</button>
+        <button class="export-btn export-img" onclick="showToast('📸 Saved to Photos!')">📸 Save as Image</button>
+        <button class="export-btn" onclick="showToast('📋 Copied!')">📋 Copy as Text</button>
+        <button class="export-btn" onclick="showToast('📄 PDF ready!')">📄 Export PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav-bar">
+  <div class="nav-item active" id="nav1" onclick="switchScreen(1)"><div class="nav-icon">⚡</div><div class="nav-label">Matrix</div></div>
+  <div class="nav-item" id="nav2" onclick="switchScreen(2)"><div class="nav-icon">🔍</div><div class="nav-label">SWOT</div></div>
+  <div class="nav-item" id="nav3" onclick="switchScreen(3)"><div class="nav-icon">🏆</div><div class="nav-label">Rewards</div></div>
+</nav>
+
+<!-- SORT SHEET -->
+<div class="modal-overlay" id="sortModal" onclick="handleOverlay(event)">
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Sort Tasks</div>
+    <div class="sort-opt selected" onclick="pickSort(this,'Priority')"><span class="sort-icon">🔴</span> By Priority</div>
+    <div class="sort-opt" onclick="pickSort(this,'Deadline')"><span class="sort-icon">📅</span> By Deadline</div>
+    <div class="sort-opt" onclick="pickSort(this,'Quadrant')"><span class="sort-icon">⚡</span> By Quadrant</div>
+    <div class="sort-opt" onclick="pickSort(this,'Created')"><span class="sort-icon">🕐</span> Date Created</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function switchScreen(n){document.querySelectorAll('.screen').forEach((s,i)=>s.classList.toggle('active',i+1===n));document.querySelectorAll('.nav-item').forEach((el,i)=>el.classList.toggle('active',i+1===n));document.querySelectorAll('.page-scroll').forEach(s=>s.scrollTop=0);}
+function toggleCheck(el){const c=el.classList.toggle('checked');el.textContent=c?'✓':'';el.closest('.task-card').querySelector('.card-title').classList.toggle('done',c);if(c)showToast('✅ Task done! +20 🪙 tokens');}
+let _tt;function showToast(msg){const t=document.getElementById('toast');clearTimeout(_tt);t.textContent=msg;t.classList.add('show');_tt=setTimeout(()=>t.classList.remove('show'),2600);}
+function openSort(){document.getElementById('sortModal').classList.add('open');}
+function handleOverlay(e){if(e.target===document.getElementById('sortModal'))document.getElementById('sortModal').classList.remove('open');}
+function pickSort(el,type){document.querySelectorAll('.sort-opt').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');showToast('↕ Sorted by '+type);setTimeout(()=>document.getElementById('sortModal').classList.remove('open'),320);}
+function generateFromSWOT(){showToast('🤖 Analysing SWOT…');setTimeout(()=>showToast('✨ 4 new tasks added to matrix!'),1500);}
+function filterTasks(v){v=v.trim().toLowerCase();document.querySelectorAll('.task-card').forEach(c=>{const t=c.querySelector('.card-title').textContent.toLowerCase();c.style.display=(!v||t.includes(v))?'':'none';});}
+// Drag and drop (desktop)
+let dragged=null;
+document.querySelectorAll('.task-card').forEach(card=>{card.addEventListener('dragstart',e=>{dragged=card;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});card.addEventListener('dragend',()=>{dragged=null;document.querySelectorAll('.task-card').forEach(c=>c.classList.remove('dragging'));});});
+document.querySelectorAll('.task-cards').forEach(zone=>{zone.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';});zone.addEventListener('drop',e=>{e.preventDefault();if(dragged&&!zone.contains(dragged)){zone.prepend(dragged);showToast('📌 Task moved!');}});});
+// Touch drag (mobile)
+let tDragged=null,tClone=null,ox=0,oy=0;
+document.querySelectorAll('.task-card').forEach(card=>{
+  card.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;tDragged=card;const t=e.touches[0],r=card.getBoundingClientRect();ox=t.clientX-r.left;oy=t.clientY-r.top;tClone=card.cloneNode(true);tClone.style.cssText='position:fixed;pointer-events:none;z-index:999;width:'+r.width+'px;opacity:0.85;left:'+r.left+'px;top:'+r.top+'px;transform:rotate(3deg) scale(1.04);box-shadow:0 16px 48px rgba(0,0,0,0.7);transition:none;';document.body.appendChild(tClone);card.style.opacity='0.3';},{passive:true});
+  card.addEventListener('touchmove',e=>{if(!tClone)return;const t=e.touches[0];tClone.style.left=(t.clientX-ox)+'px';tClone.style.top=(t.clientY-oy)+'px';},{passive:true});
+  card.addEventListener('touchend',e=>{if(!tClone||!tDragged)return;const t=e.changedTouches[0];tClone.remove();tClone=null;tDragged.style.opacity='1';const el=document.elementFromPoint(t.clientX,t.clientY),zone=el&&el.closest('.task-cards');if(zone&&!zone.contains(tDragged)){zone.prepend(tDragged);showToast('📌 Task moved!');}tDragged=null;});
+});
+</script>
+</body>
+</html>

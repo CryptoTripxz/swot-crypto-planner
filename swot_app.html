@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SWOT Crypto Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; min-height: 100vh; overflow-x: hidden; background: #050d1f; }
+
+/* ═══════════════════════════════════════
+   SCREEN TRANSITIONS
+═══════════════════════════════════════ */
+#splash {
+  position: fixed; inset: 0; z-index: 1000;
+  cursor: pointer;
+  transition: opacity 0.9s ease, transform 0.9s cubic-bezier(.4,0,.2,1);
+}
+#splash.exit {
+  opacity: 0; transform: scale(1.07); pointer-events: none;
+}
+#wireframe {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.9s ease 0.5s, transform 0.9s cubic-bezier(.22,.68,0,1.2) 0.5s;
+  min-height: 100vh; background: #ECEEF4;
+}
+#wireframe.show { opacity: 1; transform: translateY(0); }
+
+/* Progress bar on splash */
+.sp-progress {
+  position: absolute; bottom: 62px; left: 50%; transform: translateX(-50%);
+  width: 160px; height: 2px; background: rgba(255,255,255,0.1);
+  border-radius: 2px; overflow: hidden; z-index: 10; pointer-events: none;
+}
+.sp-progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #00c8ac, #d4af37);
+  border-radius: 2px;
+  animation: spLoad 3.2s linear 0.5s forwards;
+}
+@keyframes spLoad { to { width: 100%; } }
+
+.sp-tap-hint {
+  position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%);
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.28); z-index: 10; pointer-events: none;
+  white-space: nowrap;
+  animation: hintPulse 2.4s ease-in-out infinite 2s;
+}
+@keyframes hintPulse { 0%,100%{opacity:0.28} 50%{opacity:0.65} }
+
+/* ═══════════════════════════════════════
+   SPLASH VARIABLES
+═══════════════════════════════════════ */
+:root {
+  --navy:#050d1f; --gold:#d4af37; --gold-l:#ffe566;
+  --teal:#00c8ac; --amber:#f97316; --violet:#6b21a8;
+}
+
+/* ── Background ── */
+#splash { background: var(--navy); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+
+.sp-bg {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%,   #0e2050 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 10% 30%,  #1a0a5e 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 60%,  #4c0d8f 0%, transparent 55%),
+    radial-gradient(ellipse 90% 60% at 50% 100%, #6b21a8 0%, transparent 65%),
+    linear-gradient(175deg, #050d1f 0%, #0d0a2e 30%, #1e0a4a 60%, #3d1278 85%, #5b1aa0 100%);
+}
+.sp-noise { position:absolute; inset:0; opacity:0.04;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:256px 256px; }
+.sp-grid { position:absolute; inset:0;
+  background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, black 0%, transparent 100%); }
+
+/* ── Orbs ── */
+.sp-orb { position:absolute; border-radius:50%; filter:blur(80px); pointer-events:none; }
+.sp-o1 { width:min(600px,55vw); height:min(600px,55vw); top:-8%; left:-8%; background:rgba(30,60,160,0.35); animation:d1 12s ease-in-out infinite; }
+.sp-o2 { width:min(500px,46vw); height:min(500px,46vw); top:30%; right:-6%; background:rgba(100,20,180,0.30); animation:d2 15s ease-in-out infinite; }
+.sp-o3 { width:min(700px,65vw); height:min(700px,65vw); bottom:-6%; left:50%; transform:translateX(-50%); background:rgba(107,33,168,0.40); animation:d3 10s ease-in-out infinite; }
+.sp-o4 { width:min(300px,28vw); height:min(300px,28vw); top:45%; left:4%; background:rgba(0,200,172,0.12); animation:d1 18s ease-in-out infinite reverse; }
+@keyframes d1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,50px)}}
+@keyframes d2{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,25px)}}
+@keyframes d3{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-30px)}}
+
+/* ── Chart lines ── */
+.sp-chart { position:absolute; bottom:0; left:0; right:0; height:45%; opacity:0.10; }
+.sp-chart svg { width:100%; height:100%; }
+
+/* ── Stars ── */
+.sp-stars { position:absolute; inset:0; pointer-events:none; }
+.sp-star { position:absolute; border-radius:50%; background:white; animation:twinkle var(--d,3s) ease-in-out infinite var(--dl,0s); }
+@keyframes twinkle{0%,100%{opacity:0.15;transform:scale(1)}50%{opacity:0.9;transform:scale(1.6)}}
+
+/* ── Polaroids ── */
+.sp-pols { position:absolute; inset:0; pointer-events:none; }
+.sp-pol {
+  position:absolute;
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18);
+  border-radius:6px; backdrop-filter:blur(12px);
+  padding:14px 14px 24px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),0 0 0 1px rgba(255,255,255,0.06) inset;
+}
+.sp-pol::after { content:''; position:absolute; bottom:0;left:0;right:0; height:22px; background:rgba(255,255,255,0.06); border-top:1px solid rgba(255,255,255,0.12); border-radius:0 0 6px 6px; }
+.sp-pin { position:absolute; top:-9px; left:50%; transform:translateX(-50%); width:16px; height:16px; border-radius:50%; background:var(--gold); box-shadow:0 2px 8px rgba(212,175,55,0.6); }
+.sp-pin::after { content:''; position:absolute; top:50%;left:50%; transform:translate(-50%,-50%); width:6px;height:6px; border-radius:50%; background:rgba(255,255,255,0.5); }
+.sp-pol .pl { font-family:'DM Sans',sans-serif; font-size:10px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:rgba(255,255,255,0.5); margin-bottom:5px; }
+.sp-pol .pc { font-family:'DM Sans',sans-serif; font-size:12px; color:rgba(255,255,255,0.9); line-height:1.4; }
+.sp-pol .pi { font-size:24px; margin-bottom:4px; display:block; }
+.ac{color:var(--gold-l);font-weight:500} .tc{color:var(--teal)} .amr{color:var(--amber)}
+
+/* Polaroid positions + bobs */
+.pp1{width:clamp(140px,17vw,210px);left:3%;top:8%;rotate:-6deg;border-top:3px solid rgba(0,200,172,0.6);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.1s both,bobA 6s ease-in-out 1.4s infinite}
+.pp2{width:clamp(130px,15vw,195px);right:4%;top:12%;rotate:5deg;border-top:3px solid rgba(212,175,55,0.6);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.25s both,bobB 7s ease-in-out 1.6s infinite}
+.pp3{width:clamp(145px,19vw,230px);left:2%;top:32%;rotate:3deg;border-top:3px solid rgba(249,115,22,0.6);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.4s both,bobA 6s ease-in-out 1.4s infinite}
+.pp4{width:clamp(125px,15vw,185px);right:3%;top:30%;rotate:-4deg;border-top:3px solid rgba(107,33,168,0.8);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.15s both,bobB 7s ease-in-out 1.6s infinite}
+.pp5{width:clamp(135px,16vw,200px);left:4%;top:56%;rotate:-2deg;border-top:3px solid rgba(212,175,55,0.6);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.5s both,bobC 8s ease-in-out 1.8s infinite}
+.pp6{width:clamp(125px,15vw,190px);right:5%;top:53%;rotate:6deg;border-top:3px solid rgba(0,200,172,0.6);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.35s both,bobC 8s ease-in-out 1.8s infinite}
+.pp7{width:clamp(145px,18vw,220px);left:3%;bottom:18%;rotate:4deg;border-top:3px solid rgba(249,115,22,0.6);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.6s both,bobA 6s ease-in-out 1.4s infinite}
+.pp8{width:clamp(125px,15vw,195px);right:3%;bottom:20%;rotate:-5deg;border-top:3px solid rgba(107,33,168,0.8);animation:fIn 1.2s cubic-bezier(.22,.68,0,1.2) 0.45s both,bobB 7s ease-in-out 1.6s infinite}
+
+@keyframes fIn{from{opacity:0;transform:translateY(28px) scale(0.93)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes bobA{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-8px) rotate(-5deg)}}
+@keyframes bobB{0%,100%{transform:translateY(0) rotate(5deg)}50%{transform:translateY(-6px) rotate(4deg)}}
+@keyframes bobC{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(-1deg)}}
+
+/* ── Center content ── */
+.sp-center { position:relative; z-index:5; text-align:center; width:min(860px,88vw); display:flex; flex-direction:column; align-items:center; }
+
+.sp-icon {
+  width:clamp(88px,9vw,128px); height:clamp(88px,9vw,128px);
+  border-radius:clamp(20px,2.8vw,32px); margin:0 auto 22px;
+  background:linear-gradient(135deg,#0d1a3a,#1a0a4a);
+  border:2px solid rgba(212,175,55,0.5);
+  box-shadow:0 0 0 6px rgba(212,175,55,0.08),0 0 50px rgba(212,175,55,0.25),0 20px 60px rgba(0,0,0,0.6);
+  display:flex; align-items:center; justify-content:center; position:relative;
+  animation:iconIn 1s cubic-bezier(.22,.68,0,1.4) 0.3s both;
+}
+.sp-icon::before { content:''; position:absolute; inset:-2px; border-radius:inherit; background:conic-gradient(from 0deg,var(--gold),transparent,var(--gold)); opacity:0.4; animation:spin8 8s linear infinite; z-index:-1; }
+@keyframes spin8{to{transform:rotate(360deg)}}
+@keyframes iconIn{from{opacity:0;transform:scale(0.7) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.sp-sg{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:clamp(54px,5.8vw,80px);height:clamp(54px,5.8vw,80px);}
+.sp-sq{border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:clamp(11px,1.5vw,16px);}
+.sp-sq.tl{background:rgba(0,195,168,0.8)}.sp-sq.tr{background:rgba(225,100,18,0.8)}.sp-sq.bl{background:rgba(128,48,218,0.8)}.sp-sq.br{background:rgba(22,188,88,0.8)}
+
+.sp-name {
+  font-family:'Bebas Neue',sans-serif; font-size:clamp(50px,6.8vw,88px);
+  letter-spacing:0.12em; color:#fff; line-height:0.95;
+  text-shadow:0 0 40px rgba(212,175,55,0.5),0 0 80px rgba(212,175,55,0.2);
+  animation:nameIn 1.1s cubic-bezier(.22,.68,0,1.2) 0.55s both;
+}
+.sp-name .cry{color:var(--gold-l);text-shadow:0 0 30px rgba(255,229,102,0.7),0 0 60px rgba(212,175,55,0.4);}
+.sp-name .sub{font-family:'Playfair Display',serif;font-size:clamp(18px,2.8vw,34px);font-style:italic;font-weight:400;letter-spacing:0.28em;color:rgba(255,255,255,0.7);display:block;text-shadow:0 0 20px rgba(212,175,55,0.3);margin-top:6px;}
+@keyframes nameIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+.sp-divline{width:240px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:20px auto;animation:fUp 0.8s ease 1s both;}
+.sp-divdot{width:7px;height:7px;border-radius:50%;background:var(--gold);margin:-4px auto 0;box-shadow:0 0 12px var(--gold);animation:fUp 0.8s ease 1s both;}
+@keyframes fUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.sp-tag{font-family:'DM Sans',sans-serif;font-size:clamp(12px,1.6vw,19px);font-weight:300;letter-spacing:0.1em;color:rgba(255,255,255,0.65);line-height:1.5;max-width:540px;margin:0 auto;animation:fUp 0.9s ease 1.1s both;}
+.sp-tag strong{color:rgba(255,255,255,0.9);font-weight:500;}
+
+.sp-pills{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px;animation:fUp 0.9s ease 1.3s both;}
+.sp-pill{font-family:'DM Sans',sans-serif;font-size:clamp(9px,1.1vw,12px);font-weight:500;letter-spacing:0.1em;text-transform:uppercase;padding:5px 14px;border-radius:100px;border:1px solid;backdrop-filter:blur(12px);}
+.sp-pill.s{color:var(--teal);border-color:rgba(0,200,172,0.4);background:rgba(0,200,172,0.08)}
+.sp-pill.w{color:var(--amber);border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.08)}
+.sp-pill.o{color:var(--gold-l);border-color:rgba(255,229,102,0.4);background:rgba(255,229,102,0.06)}
+.sp-pill.t{color:#c084fc;border-color:rgba(192,132,252,0.4);background:rgba(192,132,252,0.08)}
+
+/* ── Coin spinner ── */
+.sp-bot{position:absolute;bottom:5%;left:50%;transform:translateX(-50%);text-align:center;animation:fUp 0.8s ease 1.5s both;}
+.sp-coin{width:48px;height:48px;margin:0 auto 12px;position:relative;}
+.sp-co{width:48px;height:48px;border-radius:50%;border:2px solid rgba(212,175,55,0.2);border-top-color:var(--gold);border-right-color:rgba(212,175,55,0.6);animation:spin8 1.4s cubic-bezier(0.68,-0.55,0.27,1.55) infinite;position:relative;}
+.sp-ci{position:absolute;top:8px;left:8px;right:8px;bottom:8px;border-radius:50%;border:1px solid rgba(212,175,55,0.15);border-bottom-color:var(--gold-l);animation:spin8 0.9s linear infinite reverse;display:flex;align-items:center;justify-content:center;}
+.sp-cs{font-size:14px;color:var(--gold-l);animation:cSpin 0.9s linear infinite;text-shadow:0 0 10px rgba(255,229,102,0.8);}
+@keyframes cSpin{to{transform:rotate(-360deg)}}
+.sp-ltxt{font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.3);}
+.sp-dots::after{content:'';animation:dots 1.6s steps(4,end) infinite;}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* ── Ticker ── */
+.sp-ticker{position:absolute;bottom:0;left:0;right:0;height:42px;background:rgba(255,255,255,0.03);border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;overflow:hidden;}
+.sp-ttrack{display:flex;gap:38px;animation:tick 20s linear infinite;white-space:nowrap;padding:0 20px;}
+.sp-ti{font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.06em;display:flex;gap:7px;align-items:center;}
+.tks{color:rgba(255,255,255,0.5);font-weight:500}.tku{color:#22c55e}.tkd{color:#ef4444}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ═══════════════════════════════════════
+   WIREFRAME VARIABLES
+═══════════════════════════════════════ */
+:root {
+  --wl:#1A1E30;--wm:#4A5070;--wu:#8890AA;
+  --wln:#B8BECE;--wld:#3A4060;
+  --wx:#F2F4FA;--ws:#E8EBF5;--wmd:#D8DCF0;--wlg:#C4C9E4;
+  --wa:#3060C8;--wab:#EBF0FF;--wabd:rgba(48,96,200,0.35);
+  --tlb:#DCF5F2;--tlbd:#60B8B0;--tlt:#0D6660;--tldp:#008A82;
+  --amb:#FBF0E2;--ambd:#C89060;--amt:#7A4010;--amdp:#C06820;
+  --vlb:#EFE8FA;--vlbd:#9870CC;--vlt:#4A1880;--vldp:#6030A0;
+  --emb:#DDF2E6;--embd:#60AA78;--emt:#0A5C30;--emdp:#18884A;
+  --gdb:#FBF6E2;--gdbd:#C8A030;--gdt:#7A5A00;
+}
+
+/* ── Back button ── */
+.back-btn {
+  position:fixed;top:20px;right:24px;z-index:999;
+  display:flex;align-items:center;gap:7px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;
+  letter-spacing:0.12em;text-transform:uppercase;color:white;
+  background:linear-gradient(135deg,#0a0f2e,#3d1a78);
+  border:1px solid rgba(212,175,55,0.4);border-radius:8px;
+  padding:8px 14px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(10,15,46,0.4);
+  transition:all 0.2s;
+}
+.back-btn:hover{background:linear-gradient(135deg,#0d1a3a,#5b1aa0);transform:translateY(-1px);}
+
+/* ── WF Layout ── */
+#wireframe{padding:36px 32px;}
+.wf-phdr{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1.5px solid var(--wmd);padding-bottom:16px;margin-bottom:28px;max-width:1480px;margin-left:auto;margin-right:auto;}
+.wf-phdr h1{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--wl);letter-spacing:0.04em;margin-bottom:4px;}
+.wf-phdr p{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--wu);letter-spacing:0.08em;}
+.wf-chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
+.wf-chip{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wm);background:white;border:1px solid var(--wln);border-radius:4px;padding:3px 9px;display:flex;align-items:center;gap:5px;}
+.wf-chip::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--wlg);}
+
+.wf-ws{display:flex;gap:40px;align-items:flex-start;max-width:1480px;margin:0 auto;}
+.wf-sb{width:240px;flex-shrink:0;position:sticky;top:80px;}
+.wf-did{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--wl);margin-bottom:3px;}
+.wf-dv{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wu);letter-spacing:0.08em;margin-bottom:22px;}
+.wf-lb{margin-bottom:20px;}
+.wf-lt{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:var(--wu);border-bottom:1px solid var(--wmd);padding-bottom:5px;margin-bottom:10px;}
+.wf-lr{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.wf-ls{width:30px;height:15px;border-radius:3px;border:1px solid;flex-shrink:0;}
+.wf-ls.tl{background:var(--tlb);border-color:var(--tlbd)}.wf-ls.am{background:var(--amb);border-color:var(--ambd)}.wf-ls.vl{background:var(--vlb);border-color:var(--vlbd)}.wf-ls.em{background:var(--emb);border-color:var(--embd)}.wf-ls.gd{background:var(--gdb);border-color:var(--gdbd)}
+.wf-ltxt{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--wl);}
+.wf-pal{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:14px;}
+.wf-ps{height:26px;border-radius:5px;border:1px solid var(--wln);display:flex;align-items:flex-end;padding-bottom:2px;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:7px;color:rgba(0,0,0,0.4);}
+.wf-it{display:inline-flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wa);background:var(--wab);border:1px solid var(--wabd);border-radius:3px;padding:2px 7px;margin:0 4px 5px 0;}
+.wf-ar{display:flex;gap:8px;margin-bottom:9px;align-items:flex-start;}
+.wf-an{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:white;background:var(--wa);border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.wf-at{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wl);line-height:1.55;}
+.wf-at strong{color:var(--wa);font-weight:600;}
+
+/* ── Phone frame ── */
+.wf-pw{position:relative;flex-shrink:0;}
+.wf-pl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--wu);text-align:center;margin-bottom:8px;}
+.wf-ph{width:430px;background:white;border:2px solid var(--wld);border-radius:52px;overflow:hidden;position:relative;box-shadow:0 0 0 6px #D0D4E8,0 0 0 8px #BCC0D8,4px 8px 24px rgba(10,15,46,0.18);}
+.wf-di{width:120px;height:34px;background:var(--wld);border-radius:0 0 20px 20px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;z-index:10;}
+.wf-dc{width:10px;height:10px;border-radius:50%;background:#222840;border:1px solid #3A4060;}
+.wf-ds{width:38px;height:6px;background:#222840;border-radius:3px;}
+.wf-sb2{display:flex;justify-content:space-between;align-items:center;padding:5px 22px 6px;background:white;}
+.wf-st{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--wl);}
+.wf-si2{display:flex;gap:5px;align-items:center;}
+.wf-sic{width:15px;height:9px;background:var(--wmd);border:1px solid var(--wln);border-radius:2px;}
+.wf-sic.sm{width:11px}.wf-sic.bat{width:22px;position:relative;}
+.wf-sic.bat::after{content:'';position:absolute;right:-4px;top:50%;transform:translateY(-50%);width:3px;height:6px;background:var(--wln);border-radius:0 1px 1px 0;}
+
+.wf-scr{background:#F8F9FC;height:828px;position:relative;overflow:hidden;}
+.wf-scrl{height:calc(828px - 60px);overflow-y:auto;overflow-x:hidden;padding-bottom:16px;}
+.wf-scrl::-webkit-scrollbar{display:none}
+
+/* Header */
+.wf-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 12px;background:linear-gradient(135deg,#FFFFFF 0%,#F2F5FF 60%,#EBF8F6 100%);border-bottom:1px solid var(--wmd);position:relative;}
+.wf-hl{display:flex;flex-direction:column;gap:2px;}
+.wf-hg{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wu);letter-spacing:0.12em;text-transform:uppercase;}
+.wf-ht{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--wl);}
+.wf-ht .ma{color:var(--tldp)}.wf-ht .sa{font-size:11px;font-weight:400;color:var(--wu);}
+.wf-hr{display:flex;gap:10px;align-items:center;}
+.wf-bell{width:32px;height:32px;border:1.5px solid var(--wln);border-radius:9px;background:white;display:flex;align-items:center;justify-content:center;position:relative;}
+.wf-bd{width:8px;height:8px;background:var(--amdp);border-radius:50%;position:absolute;top:-3px;right:-3px;border:1.5px solid white;}
+.wf-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--ws),var(--tlb));border:2px solid var(--tlbd);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--tlt);}
+
+.wf-sl{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--wm);padding:12px 20px 6px;display:flex;justify-content:space-between;align-items:center;}
+.wf-sa{font-size:9px;color:var(--wa);text-decoration:underline;}
+
+/* SWOT card */
+.wf-sc{margin:0 20px 6px;border:1.5px solid var(--wln);border-radius:14px;background:white;overflow:hidden;box-shadow:0 2px 12px rgba(10,15,46,0.07);position:relative;}
+.wf-sh{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--wmd);background:linear-gradient(90deg,var(--wx),#EFF1FA);}
+.wf-stt{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--wl);}
+.wf-cb{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wm);border:1px solid var(--wln);border-radius:5px;padding:3px 8px;background:white;}
+.wf-g2{display:grid;grid-template-columns:1fr 1fr;gap:1.5px;background:var(--wmd);position:relative;}
+.wf-q{padding:11px 12px 9px;}
+.wf-q.tl{background:var(--tlb)}.wf-q.tr{background:var(--amb)}.wf-q.bl{background:var(--vlb)}.wf-q.br{background:var(--emb)}
+.wf-qh{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding-bottom:5px;margin-bottom:5px;}
+.wf-qh.tl{color:var(--tlt);border-bottom:1.5px solid var(--tlbd)}.wf-qh.tr{color:var(--amt);border-bottom:1.5px solid var(--ambd)}.wf-qh.bl{color:var(--vlt);border-bottom:1.5px solid var(--vlbd)}.wf-qh.br{color:var(--emt);border-bottom:1.5px solid var(--embd)}
+.wf-qd{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.wf-qd.tl{background:var(--tldp)}.wf-qd.tr{background:var(--amdp)}.wf-qd.bl{background:var(--vldp)}.wf-qd.br{background:var(--emdp)}
+.wf-qi{display:flex;gap:6px;align-items:flex-start;padding:2.5px 0;}
+.wf-qb{width:4px;height:4px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.wf-qb.tl{background:var(--tlbd)}.wf-qb.tr{background:var(--ambd)}.wf-qb.bl{background:var(--vlbd)}.wf-qb.br{background:var(--embd)}
+.wf-qtx{font-family:'IBM Plex Sans',sans-serif;font-size:9.5px;color:var(--wl);line-height:1.35;}
+.wf-qa{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wu);margin-top:5px;text-decoration:underline dotted;text-align:right;}
+
+/* Progress */
+.wf-pg{margin:4px 20px 6px;border:1.5px solid var(--wln);border-radius:14px;background:white;padding:12px 14px;box-shadow:0 2px 10px rgba(10,15,46,0.05);position:relative;}
+.wf-pgh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.wf-pgt{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--wl);}
+.wf-pgp{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--emdp);}
+.wf-pgt2{height:9px;background:var(--ws);border-radius:100px;border:1px solid var(--wln);overflow:hidden;margin-bottom:7px;}
+.wf-pgf{height:100%;width:75%;background:repeating-linear-gradient(55deg,var(--emb),var(--emb) 4px,var(--embd) 4px,var(--embd) 8px);border-radius:100px;}
+.wf-pgm{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wu);margin-bottom:9px;}
+.wf-pgtags{display:flex;gap:7px;flex-wrap:wrap;}
+.wf-ptg{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wl);border:1px solid var(--wln);border-radius:5px;padding:2px 8px;background:var(--wx);display:flex;align-items:center;gap:5px;}
+.wf-pd{width:5px;height:5px;border-radius:50%;background:var(--wlg);}
+.wf-pd.d{background:var(--emdp)}.wf-pd.g{background:var(--gdbd)}
+
+/* Actions */
+.wf-acts{display:flex;gap:10px;padding:4px 20px 6px;position:relative;}
+.wf-act{flex:1;border:1.5px solid var(--wln);border-radius:12px;padding:11px 8px 10px;background:white;text-align:center;position:relative;box-shadow:0 1px 6px rgba(10,15,46,0.05);}
+.wf-act.p{background:linear-gradient(145deg,var(--wx),var(--tlb));border-color:var(--tlbd);}
+.wf-act.s{background:linear-gradient(145deg,var(--wx),var(--vlb));border-color:var(--vlbd);}
+.wf-act.t{background:linear-gradient(145deg,var(--wx),var(--gdb));border-color:var(--gdbd);}
+.wf-ai{width:26px;height:26px;border:1.5px solid var(--wln);border-radius:7px;background:white;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;}
+.wf-al{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:var(--wl);line-height:1.3;}
+
+/* Carousel */
+.wf-cr{display:flex;gap:12px;padding:4px 20px 6px;overflow-x:auto;}
+.wf-cr::-webkit-scrollbar{display:none}
+.wf-cc{flex-shrink:0;width:160px;border:1.5px solid var(--wln);border-radius:13px;background:white;padding:11px;box-shadow:0 2px 10px rgba(10,15,46,0.06);}
+.wf-cc:nth-child(1){border-top:3px solid var(--tlbd)}.wf-cc:nth-child(2){border-top:3px solid var(--vlbd)}.wf-cc:nth-child(3){border-top:3px solid var(--gdbd)}.wf-cc:nth-child(4){border-top:3px solid var(--ambd)}.wf-cc:nth-child(5){border:1.5px dashed var(--wln);background:var(--wx);}
+.wf-ct{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.wf-ci{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--wln);background:var(--ws);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;flex-shrink:0;}
+.wf-ci.tl{background:var(--tlb);border-color:var(--tlbd);color:var(--tlt)}.wf-ci.vl{background:var(--vlb);border-color:var(--vlbd);color:var(--vlt)}.wf-ci.gd{background:var(--gdb);border-color:var(--gdbd);color:var(--gdt)}.wf-ci.am{background:var(--amb);border-color:var(--ambd);color:var(--amt)}
+.wf-cn{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--wl);line-height:1.2;}
+.wf-ck{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wu);}
+.wf-cn2{font-family:'IBM Plex Sans',sans-serif;font-size:8.5px;color:var(--wu);line-height:1.4;margin-bottom:8px;}
+.wf-ctags{display:flex;gap:4px;flex-wrap:wrap;}
+.wf-ctag{font-family:'IBM Plex Mono',monospace;font-size:7.5px;border:1px solid var(--wln);border-radius:3px;padding:1px 5px;color:var(--wu);background:var(--wx);}
+.wf-dots{display:flex;gap:5px;justify-content:center;padding:5px 0 2px;}
+.wf-dot{width:5px;height:5px;border-radius:50%;background:var(--wlg);border:1px solid var(--wln);}
+.wf-dot.a{width:16px;border-radius:100px;background:var(--tldp);border-color:var(--tldp);}
+
+/* Bottom nav */
+.wf-bn{position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(180deg,white,#F4F6FF);border-top:1.5px solid var(--wmd);display:flex;align-items:flex-start;padding-top:6px;}
+.wf-ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;}
+.wf-nic{width:26px;height:26px;border:1.5px solid var(--wln);border-radius:7px;background:var(--wx);display:flex;align-items:center;justify-content:center;}
+.wf-ni.active .wf-nic{background:var(--tlb);border-color:var(--tlbd);}
+.wf-nl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wu);letter-spacing:0.06em;}
+.wf-ni.active .wf-nl{color:var(--tlt);font-weight:600;}
+.wf-nd{width:4px;height:4px;border-radius:50%;background:var(--tldp);position:absolute;bottom:2px;}
+
+/* Annotation pins */
+.apin{position:absolute;width:19px;height:19px;background:var(--wa);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:white;z-index:200;box-shadow:0 2px 6px rgba(48,96,200,0.35);pointer-events:none;}
+.ilbl{position:absolute;font-family:'IBM Plex Mono',monospace;font-size:7.5px;color:var(--wa);background:var(--wab);border:1px solid var(--wabd);border-radius:3px;padding:1.5px 5px;z-index:200;white-space:nowrap;pointer-events:none;}
+
+/* Right specs */
+.wf-sp{flex:1;min-width:200px;padding-top:26px;}
+.wf-spt{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:var(--wu);border-bottom:1px solid var(--wmd);padding-bottom:5px;margin-bottom:12px;}
+.wf-co2{background:white;border:1px solid var(--wln);border-left:3px solid;border-radius:0 7px 7px 0;padding:8px 10px;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wl);line-height:1.6;}
+.wf-co2 strong{display:block;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;}
+.wf-co2.tl{border-left-color:var(--tlbd)}.wf-co2.am{border-left-color:var(--ambd)}.wf-co2.vl{border-left-color:var(--vlbd)}.wf-co2.em{border-left-color:var(--embd)}.wf-co2.gd{border-left-color:var(--gdbd)}.wf-co2.nv{border-left-color:var(--wa);}
+.wf-fl{background:white;border:1px solid var(--wln);border-radius:7px;padding:11px 13px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wl);line-height:2.1;margin-bottom:10px;}
+.wf-fl .fa{color:var(--wa);}
+.wf-tk{background:white;border:1px solid var(--wln);border-radius:7px;padding:11px 13px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wl);line-height:2.1;}
+
+.wf-meas{position:absolute;bottom:-24px;left:0;right:0;display:flex;align-items:center;}
+.wf-ml{flex:1;height:1px;background:rgba(180,50,0,0.4);}
+.wf-mm{font-family:'IBM Plex Mono',monospace;font-size:8px;color:rgba(180,50,0,0.7);padding:0 5px;}
+
+.wf-ft{margin-top:40px;padding-top:14px;border-top:1px solid var(--wmd);display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--wu);max-width:1480px;margin-left:auto;margin-right:auto;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     SPLASH SCREEN
+═══════════════════════════════════════════════════ -->
+<div id="splash" onclick="enterApp()">
+  <div class="sp-bg"></div>
+  <div class="sp-noise"></div>
+  <div class="sp-grid"></div>
+  <div class="sp-orb sp-o1"></div>
+  <div class="sp-orb sp-o2"></div>
+  <div class="sp-orb sp-o3"></div>
+  <div class="sp-orb sp-o4"></div>
+
+  <div class="sp-chart">
+    <svg viewBox="0 0 1080 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00c8ac" stop-opacity="0.3"/><stop offset="100%" stop-color="#00c8ac" stop-opacity="0"/></linearGradient></defs>
+      <polyline points="0,700 120,650 200,680 280,580 360,540 440,490 520,420 580,380 640,340 700,280 760,300 820,220 900,180 980,140 1080,90" fill="none" stroke="#00c8ac" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="0,700 120,650 200,680 280,580 360,540 440,490 520,420 580,380 640,340 700,280 760,300 820,220 900,180 980,140 1080,90 1080,900 0,900" fill="url(#cg)" opacity="0.15"/>
+      <polyline points="0,800 150,760 250,780 380,720 460,680 560,640 660,590 740,550 840,500 920,460 1080,400" fill="none" stroke="rgba(212,175,55,0.4)" stroke-width="1.5" stroke-dasharray="8 4"/>
+    </svg>
+  </div>
+
+  <div class="sp-stars" id="sp-stars"></div>
+
+  <div class="sp-pols">
+    <div class="sp-pol pp1"><div class="sp-pin"></div><div class="pl tc">S · Strengths</div><span class="pi">💪</span><div class="pc"><span class="ac">Resilient Investor</span><br>Stay strong through volatility</div></div>
+    <div class="sp-pol pp2"><div class="sp-pin"></div><div class="pl" style="color:rgba(255,229,102,0.6)">₿ Token</div><span class="pi">🪙</span><div class="pc"><span class="ac">Bitcoin</span><br><span style="font-size:11px;color:rgba(255,255,255,0.6)">BTC · $67,420</span></div></div>
+    <div class="sp-pol pp3"><div class="sp-pin"></div><div class="pl amr">W · Weaknesses</div><span class="pi">⚠️</span><div class="pc"><span class="amr">Manage Risk</span><br>Set your stop-loss</div></div>
+    <div class="sp-pol pp4"><div class="sp-pin"></div><div class="pl" style="color:rgba(192,132,252,0.7)">🔐 Wallet</div><span class="pi">👛</span><div class="pc">Portfolio<br><span style="font-size:11px;color:rgba(255,255,255,0.6)">Secured · Multi-chain</span></div></div>
+    <div class="sp-pol pp5"><div class="sp-pin"></div><div class="pl" style="color:rgba(255,229,102,0.6)">O · Opportunities</div><span class="pi">🚀</span><div class="pc"><span class="ac">Airdrop Alerts</span><br>Catch the next big drop</div></div>
+    <div class="sp-pol pp6"><div class="sp-pin"></div><div class="pl tc">📈 Trending</div><span class="pi">📊</span><div class="pc"><span class="tc">+24.7% ↑</span><br><span style="font-size:11px;color:rgba(255,255,255,0.6)">SOL · 7d bull run</span></div></div>
+    <div class="sp-pol pp7"><div class="sp-pin"></div><div class="pl" style="color:rgba(192,132,252,0.7)">T · Threats</div><span class="pi">🛡️</span><div class="pc">Market <span style="color:#c084fc;font-weight:500">Volatility</span><br>Hedge & diversify</div></div>
+    <div class="sp-pol pp8"><div class="sp-pin"></div><div class="pl amr">Ξ Ethereum</div><span class="pi">💎</span><div class="pc"><span class="amr">ETH</span> · $3,812<br><span style="font-size:11px;color:rgba(255,255,255,0.6)">Staking: 4.2%</span></div></div>
+  </div>
+
+  <div class="sp-center">
+    <div class="sp-icon">
+      <div class="sp-sg">
+        <div class="sp-sq tl">⭐</div><div class="sp-sq tr">⚠️</div>
+        <div class="sp-sq bl">💡</div><div class="sp-sq br">🛡️</div>
+      </div>
+    </div>
+    <div class="sp-name">SWOT<br><span class="cry">CRYPTO</span><br><span class="sub">Planner</span></div>
+    <div class="sp-divline"></div>
+    <div class="sp-divdot"></div>
+    <p class="sp-tag"><strong>Strategize</strong> Your Crypto Journey<br>with <strong>SWOT Insights</strong></p>
+    <div class="sp-pills">
+      <div class="sp-pill s">Strengths</div>
+      <div class="sp-pill w">Weaknesses</div>
+      <div class="sp-pill o">Opportunities</div>
+      <div class="sp-pill t">Threats</div>
+    </div>
+  </div>
+
+  <div class="sp-bot">
+    <div class="sp-coin"><div class="sp-co"><div class="sp-ci"><span class="sp-cs">₿</span></div></div></div>
+    <div class="sp-ltxt">Loading<span class="sp-dots"></span></div>
+  </div>
+
+  <div class="sp-progress"><div class="sp-progress-fill"></div></div>
+  <div class="sp-tap-hint">Tap anywhere to enter →</div>
+
+  <div class="sp-ticker">
+    <div class="sp-ttrack">
+      <div class="sp-ti"><span class="tks">BTC</span><span class="tku">▲ +2.4%</span></div>
+      <div class="sp-ti"><span class="tks">ETH</span><span class="tku">▲ +1.8%</span></div>
+      <div class="sp-ti"><span class="tks">SOL</span><span class="tku">▲ +5.2%</span></div>
+      <div class="sp-ti"><span class="tks">BNB</span><span class="tkd">▼ -0.9%</span></div>
+      <div class="sp-ti"><span class="tks">ADA</span><span class="tku">▲ +3.1%</span></div>
+      <div class="sp-ti"><span class="tks">DOT</span><span class="tkd">▼ -1.2%</span></div>
+      <div class="sp-ti"><span class="tks">AVAX</span><span class="tku">▲ +4.7%</span></div>
+      <div class="sp-ti"><span class="tks">MATIC</span><span class="tku">▲ +2.0%</span></div>
+      <div class="sp-ti"><span class="tks">BTC</span><span class="tku">▲ +2.4%</span></div>
+      <div class="sp-ti"><span class="tks">ETH</span><span class="tku">▲ +1.8%</span></div>
+      <div class="sp-ti"><span class="tks">SOL</span><span class="tku">▲ +5.2%</span></div>
+      <div class="sp-ti"><span class="tks">BNB</span><span class="tkd">▼ -0.9%</span></div>
+      <div class="sp-ti"><span class="tks">ADA</span><span class="tku">▲ +3.1%</span></div>
+      <div class="sp-ti"><span class="tks">AVAX</span><span class="tku">▲ +4.7%</span></div>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:48px;right:20px;font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(255,255,255,0.18);letter-spacing:0.15em;">v2.0.1</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     WIREFRAME SCREEN
+═══════════════════════════════════════════════════ -->
+<div id="wireframe">
+
+  <div class="back-btn" onclick="backToSplash()"><span>←</span> Back to Splash</div>
+
+  <div class="wf-phdr">
+    <div><h1>SWOT CRYPTO PLANNER — HOME SCREEN</h1><p>WF-002 · iPhone 15 Pro Max · 430 × 932pt · Splash-tone palette · Feb 2026</p></div>
+    <div class="wf-chips">
+      <div class="wf-chip">430pt wide</div><div class="wf-chip">932pt tall</div>
+      <div class="wf-chip">Dynamic Island</div><div class="wf-chip">@3x retina</div>
+      <div class="wf-chip">Safe area 59pt · 34pt</div>
+    </div>
+  </div>
+
+  <div class="wf-ws">
+
+    <!-- SIDEBAR -->
+    <div class="wf-sb">
+      <div class="wf-did">SWOT Crypto Planner</div>
+      <div class="wf-dv">Home Screen · WF-002 · v2.0</div>
+
+      <div class="wf-lb">
+        <div class="wf-lt">Splash Palette · Subtle Tones</div>
+        <div class="wf-pal">
+          <div class="wf-ps" style="background:var(--tlb);border-color:var(--tlbd);">Teal</div>
+          <div class="wf-ps" style="background:var(--amb);border-color:var(--ambd);">Amber</div>
+          <div class="wf-ps" style="background:var(--vlb);border-color:var(--vlbd);">Violet</div>
+          <div class="wf-ps" style="background:var(--emb);border-color:var(--embd);">Emerald</div>
+          <div class="wf-ps" style="background:var(--gdb);border-color:var(--gdbd);">Gold</div>
+          <div class="wf-ps" style="background:var(--ws);">Navy</div>
+          <div class="wf-ps" style="background:linear-gradient(135deg,#F2F5FF,#EBF8F6);">Hdr</div>
+          <div class="wf-ps" style="background:linear-gradient(180deg,white,#F4F6FF);">Nav</div>
+          <div class="wf-ps" style="background:var(--wab);border-color:var(--wabd);">Ann</div>
+          <div class="wf-ps" style="background:var(--wx);">Fill</div>
+        </div>
+      </div>
+
+      <div class="wf-lb">
+        <div class="wf-lt">SWOT Quadrants</div>
+        <div class="wf-lr"><div class="wf-ls tl"></div><div class="wf-ltxt">S — Strengths · Teal</div></div>
+        <div class="wf-lr"><div class="wf-ls am"></div><div class="wf-ltxt">W — Weaknesses · Amber</div></div>
+        <div class="wf-lr"><div class="wf-ls vl"></div><div class="wf-ltxt">O — Opportunities · Violet</div></div>
+        <div class="wf-lr"><div class="wf-ls em"></div><div class="wf-ltxt">T — Threats · Emerald</div></div>
+      </div>
+
+      <div class="wf-lb">
+        <div class="wf-lt">Interactions</div>
+        <div style="line-height:2;">
+          <span class="wf-it">👆 TAP</span><span class="wf-it">👉 SWIPE ←→</span>
+          <span class="wf-it">📜 SCROLL ↕</span><span class="wf-it">▼ COLLAPSE</span>
+        </div>
+      </div>
+
+      <div class="wf-lb">
+        <div class="wf-lt">Annotations</div>
+        <div class="wf-ar"><div class="wf-an">1</div><div class="wf-at"><strong>Header</strong> — Dynamic month. Avatar → Profile. Bell → Notifications.</div></div>
+        <div class="wf-ar"><div class="wf-an">2</div><div class="wf-at"><strong>Collapse</strong> — Chevron folds/unfolds SWOT grid with height animation.</div></div>
+        <div class="wf-ar"><div class="wf-an">3</div><div class="wf-at"><strong>Quadrant tap</strong> — Full SWOT detail modal slides up.</div></div>
+        <div class="wf-ar"><div class="wf-an">4</div><div class="wf-at"><strong>+ Add item</strong> — Inline input at bottom of quadrant.</div></div>
+        <div class="wf-ar"><div class="wf-an">5</div><div class="wf-at"><strong>Progress</strong> — Emerald fill 75%. Tap → monthly goals screen.</div></div>
+        <div class="wf-ar"><div class="wf-an">6</div><div class="wf-at"><strong>Quick Actions</strong> — Teal=New SWOT · Violet=Matrix · Gold=Pulse.</div></div>
+        <div class="wf-ar"><div class="wf-an">7</div><div class="wf-at"><strong>Carousel</strong> — Swipe ←→. Snap per card. Tap → project detail.</div></div>
+        <div class="wf-ar"><div class="wf-an">8</div><div class="wf-at"><strong>Bottom Nav</strong> — 4 tabs. Active = teal tint + dot.</div></div>
+      </div>
+    </div>
+
+    <!-- PHONE -->
+    <div class="wf-pw">
+      <div class="wf-pl">iPhone 15 Pro Max · 430 × 932pt</div>
+      <div class="wf-ph">
+        <div class="wf-di"><div class="wf-dc"></div><div class="wf-ds"></div><div class="wf-dc"></div></div>
+        <div class="wf-sb2">
+          <span class="wf-st">9:41</span>
+          <div class="wf-si2"><div class="wf-sic sm"></div><div class="wf-sic"></div><div class="wf-sic bat"></div></div>
+        </div>
+
+        <div class="wf-scr">
+          <!-- ① Header -->
+          <div class="wf-hdr">
+            <div class="apin" style="top:-9px;left:10px;">1</div>
+            <div class="wf-hl">
+              <div class="wf-hg">Good morning, CryptoTripxz 👋</div>
+              <div class="wf-ht"><span class="ma">February 2026</span><span class="sa"> · SWOT</span></div>
+            </div>
+            <div class="wf-hr">
+              <div class="wf-bell"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A5070" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><div class="wf-bd"></div></div>
+              <div class="wf-av">CT</div>
+            </div>
+            <div class="ilbl" style="bottom:-15px;right:4px;">👆 TAP → Profile</div>
+          </div>
+
+          <div class="wf-scrl">
+            <div class="wf-sl">SWOT Summary<span class="wf-sa">Edit →</span></div>
+
+            <!-- ②③④ SWOT -->
+            <div class="wf-sc">
+              <div class="apin" style="top:-9px;left:10px;">2</div>
+              <div class="wf-sh"><div class="wf-stt">Feb 2026 · SWOT Analysis</div><div class="wf-cb">▲ Collapse</div></div>
+              <div class="wf-g2">
+                <div class="apin" style="top:50%;left:50%;transform:translate(-50%,-50%);z-index:300;">3</div>
+                <div class="wf-q tl"><div class="wf-qh tl"><div class="wf-qd tl"></div>S · Strengths</div>
+                  <div class="wf-qi"><div class="wf-qb tl"></div><div class="wf-qtx">Self-Discipline</div></div>
+                  <div class="wf-qi"><div class="wf-qb tl"></div><div class="wf-qtx">Long-term mindset</div></div>
+                  <div class="wf-qi"><div class="wf-qb tl"></div><div class="wf-qtx">Risk management</div></div>
+                  <div class="wf-qa">+ Add item</div></div>
+                <div class="wf-q tr"><div class="wf-qh tr"><div class="wf-qd tr"></div>W · Weaknesses</div>
+                  <div class="wf-qi"><div class="wf-qb tr"></div><div class="wf-qtx">FOMO tendencies</div></div>
+                  <div class="wf-qi"><div class="wf-qb tr"></div><div class="wf-qtx">Over-diversified</div></div>
+                  <div class="wf-qi"><div class="wf-qb tr"></div><div class="wf-qtx">Overleveraged</div></div>
+                  <div class="wf-qa">+ Add item</div></div>
+                <div class="wf-q bl"><div class="wf-qh bl"><div class="wf-qd bl"></div>O · Opportunities</div>
+                  <div class="wf-qi"><div class="wf-qb bl"></div><div class="wf-qtx">Airdrop Alerts</div></div>
+                  <div class="wf-qi"><div class="wf-qb bl"></div><div class="wf-qtx">DeFi yield plays</div></div>
+                  <div class="wf-qi"><div class="wf-qb bl"></div><div class="wf-qtx">Layer 2 growth</div></div>
+                  <div class="wf-qa">+ Add item</div></div>
+                <div class="wf-q br"><div class="wf-qh br"><div class="wf-qd br"></div>T · Threats</div>
+                  <div class="wf-qi"><div class="wf-qb br"></div><div class="wf-qtx">Market Volatility</div></div>
+                  <div class="wf-qi"><div class="wf-qb br"></div><div class="wf-qtx">Regulatory risk</div></div>
+                  <div class="wf-qi"><div class="wf-qb br"></div><div class="wf-qtx">Smart contract bugs</div></div>
+                  <div class="wf-qa">+ Add item</div></div>
+              </div>
+              <div class="apin" style="bottom:-9px;right:10px;z-index:300;">4</div>
+              <div class="ilbl" style="bottom:-15px;left:36px;">👆 TAP quadrant → Detail</div>
+            </div>
+
+            <!-- ⑤ Progress -->
+            <div class="wf-sl" style="margin-top:4px;">Monthly Goals<span class="wf-sa">View All →</span></div>
+            <div class="wf-pg">
+              <div class="apin" style="top:-9px;left:10px;">5</div>
+              <div class="wf-pgh"><div class="wf-pgt">Overall Progress</div><div class="wf-pgp">75%</div></div>
+              <div class="wf-pgt2"><div class="wf-pgf"></div></div>
+              <div class="wf-pgm"><span>0%</span><span>Target: Feb 28</span><span>100%</span></div>
+              <div class="wf-pgtags">
+                <div class="wf-ptg"><div class="wf-pd d"></div>3 SWOTs</div>
+                <div class="wf-ptg"><div class="wf-pd d"></div>Journal: 12d</div>
+                <div class="wf-ptg"><div class="wf-pd g"></div>Matrix ⏳</div>
+                <div class="wf-ptg"><div class="wf-pd"></div>1 goal left</div>
+              </div>
+              <div class="ilbl" style="bottom:-15px;right:4px;">👆 TAP → Goals</div>
+            </div>
+
+            <!-- ⑥ Actions -->
+            <div class="wf-sl" style="margin-top:4px;">Quick Actions</div>
+            <div class="wf-acts">
+              <div class="apin" style="top:-9px;left:10px;">6</div>
+              <div class="wf-act p">
+                <div class="wf-ai" style="border-color:var(--tlbd);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tldp)" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                <div class="wf-al" style="color:var(--tlt);">Start New SWOT</div>
+                <div class="ilbl" style="top:-14px;left:0;right:0;text-align:center;">👆 → New SWOT</div>
+              </div>
+              <div class="wf-act s">
+                <div class="wf-ai" style="border-color:var(--vlbd);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--vldp)" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+                <div class="wf-al" style="color:var(--vlt);">Importance Matrix</div>
+                <div class="ilbl" style="top:-14px;left:0;right:0;text-align:center;">👆 → Matrix</div>
+              </div>
+              <div class="wf-act t">
+                <div class="wf-ai" style="border-color:var(--gdbd);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gdt)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                <div class="wf-al" style="color:var(--gdt);">Market Pulse</div>
+                <div class="ilbl" style="top:-14px;left:0;right:0;text-align:center;">👆 → Charts</div>
+              </div>
+            </div>
+
+            <!-- ⑦ Carousel -->
+            <div class="wf-sl" style="margin-top:10px;">Under My Radar<span class="wf-sa">See All →</span></div>
+            <div style="position:relative;">
+              <div class="apin" style="top:-9px;left:10px;">7</div>
+              <div class="ilbl" style="top:0;right:20px;">👉 SWIPE ←→</div>
+            </div>
+            <div class="wf-cr">
+              <div class="wf-cc"><div class="wf-ct"><div class="wf-ci tl">RON</div><div><div class="wf-cn">Ronin Network</div><div class="wf-ck">$RON</div></div></div><div class="wf-cn2">Gaming chain. Watch v2 upgrade Q1.</div><div class="wf-ctags"><div class="wf-ctag" style="border-color:var(--tlbd);color:var(--tlt);">Gaming</div><div class="wf-ctag">🔥</div></div></div>
+              <div class="wf-cc"><div class="wf-ct"><div class="wf-ci vl">ARB</div><div><div class="wf-cn">Arbitrum</div><div class="wf-ck">$ARB</div></div></div><div class="wf-cn2">Leading L2. Watch TVL post-STIP.</div><div class="wf-ctags"><div class="wf-ctag" style="border-color:var(--vlbd);color:var(--vlt);">L2</div><div class="wf-ctag">DeFi</div></div></div>
+              <div class="wf-cc"><div class="wf-ct"><div class="wf-ci gd">JUP</div><div><div class="wf-cn">Jupiter</div><div class="wf-ck">$JUP</div></div></div><div class="wf-cn2">SOL DEX. Bullish launchpad.</div><div class="wf-ctags"><div class="wf-ctag" style="border-color:var(--gdbd);color:var(--gdt);">DEX</div><div class="wf-ctag">⭐</div></div></div>
+              <div class="wf-cc"><div class="wf-ct"><div class="wf-ci am">ENA</div><div><div class="wf-cn">Ethena</div><div class="wf-ck">$ENA</div></div></div><div class="wf-cn2">Synthetic dollar. Watch depeg risk.</div><div class="wf-ctags"><div class="wf-ctag" style="border-color:var(--ambd);color:var(--amt);">Stable</div><div class="wf-ctag">⚠️</div></div></div>
+              <div class="wf-cc" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;min-height:116px;"><div style="width:26px;height:26px;border:1.5px dashed var(--wln);border-radius:50%;display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--wu)" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div style="font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--wu);text-align:center;">Add to<br>Radar</div></div>
+            </div>
+            <div class="wf-dots"><div class="wf-dot a"></div><div class="wf-dot"></div><div class="wf-dot"></div><div class="wf-dot"></div><div class="wf-dot"></div></div>
+            <div style="text-align:center;padding:8px 0 14px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--wu);letter-spacing:0.12em;">📜 SCROLL FOR MORE</span></div>
+          </div>
+
+          <!-- ⑧ Bottom nav -->
+          <div class="wf-bn" style="position:relative;">
+            <div class="apin" style="top:-9px;left:10px;">8</div>
+            <div class="wf-ni active"><div class="wf-nic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--tlt)" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="wf-nl">Home</div><div class="wf-nd"></div></div>
+            <div class="wf-ni"><div class="wf-nic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--wu)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></div><div class="wf-nl">Journal</div></div>
+            <div class="wf-ni"><div class="wf-nic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--wu)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></div><div class="wf-nl">Tools</div></div>
+            <div class="wf-ni"><div class="wf-nic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--wu)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="wf-nl">Profile</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="wf-meas"><div class="wf-ml"></div><div class="wf-mm">430pt</div><div class="wf-ml"></div></div>
+    </div>
+
+    <!-- RIGHT SPECS -->
+    <div class="wf-sp">
+      <div class="wf-spt" style="margin-top:0;">Component Specs</div>
+      <div class="wf-co2 nv"><strong>① App Header</strong>Height: 64pt · Gradient navy→teal · Avatar 36pt teal border · Bell 32pt · Amber dot</div>
+      <div class="wf-co2 tl"><strong>② SWOT Card</strong>Margin 20pt · Radius 14pt · Header 34pt · Gradient fill-xs→fill-sm · Shadow navy/7%</div>
+      <div class="wf-co2 tl"><strong>③ Quadrant Grid</strong>2×2 equal · Gap 1.5pt · Each quad ~96pt · 8.5pt mono caps · Colored border</div>
+      <div class="wf-co2 am"><strong>④ Add Item</strong>Dotted underline · 8pt mono · Tap → inline input + keyboard</div>
+      <div class="wf-co2 em"><strong>⑤ Progress Bar</strong>Track 9pt · Emerald hatched fill 75% · Goal tags with colored dots</div>
+      <div class="wf-co2 vl"><strong>⑥ Quick Actions</strong>3-col flex · 12pt radius · Teal/Violet/Gold gradient per button · Icon 26pt</div>
+      <div class="wf-co2 gd"><strong>⑦ Radar Carousel</strong>Card 160pt · Snap-align start · 3pt top border · Active dot = 16pt teal pill</div>
+      <div class="wf-co2 em"><strong>⑧ Bottom Nav</strong>Height 60pt · Gradient white→navy · Active teal + 4pt dot · 34pt safe area</div>
+
+      <div class="wf-spt" style="margin-top:18px;">Navigation Flow</div>
+      <div class="wf-fl">
+        Home → Quadrant 👆 → <span class="fa">SWOT Detail</span><br>
+        Home → Start New SWOT → <span class="fa">New Entry Flow</span><br>
+        Home → Importance Matrix → <span class="fa">2×2 Matrix</span><br>
+        Home → Market Pulse → <span class="fa">Live Charts</span><br>
+        Home → Radar Card → <span class="fa">Project Detail</span><br>
+        Home → Avatar → <span class="fa">Profile Screen</span><br>
+        Nav → Journal → <span class="fa">Journal List</span><br>
+        Nav → Tools → <span class="fa">Tools Hub</span>
+      </div>
+
+      <div class="wf-spt" style="margin-top:14px;">Design Tokens</div>
+      <div class="wf-tk">
+        --spacing-xs: 4pt &nbsp; --spacing-md: 16pt<br>
+        --spacing-lg: 20pt &nbsp; --spacing-xl: 24pt<br>
+        --radius-sm: 7pt &nbsp;&nbsp; --radius-md: 12pt<br>
+        --radius-lg: 14pt &nbsp;&nbsp; --radius-xl: 52pt<br>
+        --shadow-sm: 0 1 6 navy/5%<br>
+        --shadow-md: 0 2 12 navy/7%<br>
+        --font-mono: IBM Plex Mono<br>
+        --font-sans: IBM Plex Sans<br>
+        --dynamic-island: 120×34pt
+      </div>
+    </div>
+  </div>
+
+  <div class="wf-ft">
+    <span>SWOT Crypto Planner · WF-002 · v2.0 · iPhone 15 Pro Max</span>
+    <span>430 × 932pt · Splash-tone palette · Feb 2026 · CryptoTripxz</span>
+  </div>
+</div>
+
+<script>
+// Star particles
+const sc = document.getElementById('sp-stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div');
+  s.className = 'sp-star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top  = Math.random() * 100 + '%';
+  s.style.setProperty('--d', (2 + Math.random() * 4) + 's');
+  s.style.setProperty('--dl', (-Math.random() * 4) + 's');
+  const sz = 1.5 + Math.random() * 2.5;
+  s.style.width = sz + 'px'; s.style.height = sz + 'px';
+  s.style.opacity = Math.random() * 0.6 + 0.1;
+  sc.appendChild(s);
+}
+
+// Auto-advance after 3.6s
+const t = setTimeout(enterApp, 3600);
+
+function enterApp() {
+  clearTimeout(t);
+  document.getElementById('splash').classList.add('exit');
+  document.getElementById('wireframe').classList.add('show');
+  document.body.style.background = '#ECEEF4';
+  setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 950);
+}
+
+function backToSplash() {
+  const sp = document.getElementById('splash');
+  const wf = document.getElementById('wireframe');
+  sp.style.display = 'flex';
+  document.body.style.background = '#050d1f';
+  requestAnimationFrame(() => {
+    sp.classList.remove('exit');
+    wf.classList.remove('show');
+  });
+}
+</script>
+</body>
+</html>
