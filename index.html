@@ -1479,12 +1479,78 @@ function updateTime(){
 }
 updateTime();setInterval(updateTime,30000);
 
-/* ═══ STATE ═══ */
-let totalXP=240;
-let completedTasks=1;
-let totalTasks=12;
+/* ════════════════════════════════════════════════════
+   LIVE STATE ENGINE — persists + syncs all data
+════════════════════════════════════════════════════ */
 
-/* ═══ TOAST ═══ */
+const LS_KEY = 'swot_crypto_v2';
+
+const DEFAULTS = {
+  xp: 240, completedTasks: 1, totalTasks: 12,
+  streak: 7, bestStreak: 14,
+  swot: {
+    s: ['Self-Discipline','Long-term mindset','Risk management'],
+    w: ['FOMO tendencies','Over-diversified','Overleveraged'],
+    o: ['Airdrop Alerts','DeFi yield plays','Layer 2 growth'],
+    t: ['Market Volatility','Regulatory risk','Smart contract bugs']
+  },
+  tasks: {
+    do: [{id:'t1',text:'Activate Portfolio Stop-loss',tag:'🔴 High',date:'Due today',done:false},
+         {id:'t2',text:'Rebalance BTC/ETH Ratio',tag:'🔴 High',date:'Due 2h',done:false},
+         {id:'t3',text:'Review Gas Fees',tag:'🟡 Med',date:'Done ✓',done:true}],
+    sc: [{id:'t4',text:'Resume Airdrop Hunting',tag:'📅 Med',date:'Mar 1',done:false},
+         {id:'t5',text:'DCA Strategy Review',tag:'📅 Med',date:'Mar 5',done:false},
+         {id:'t6',text:'Study L2 Protocols',tag:'📅 Low',date:'Mar 10',done:false}],
+    dg: [{id:'t7',text:'Set Up NFT Accounts',tag:'🤝 Share',date:'📤',done:false},
+         {id:'t8',text:'Configure Tax Reports',tag:'🤝 Share',date:'📤',done:false},
+         {id:'t9',text:'Wallet Backup Routine',tag:'🤝 Share',date:'📤',done:false}],
+    dp: [{id:'ta',text:'Reduce Distractions',tag:'⬇ Low',date:'Someday',done:false},
+         {id:'tb',text:'Browse Meme Coins',tag:'⬇ Low',date:'Delete',done:false},
+         {id:'tc',text:'Redesign Home Screen',tag:'⬇ Low',date:'Delete',done:false}]
+  },
+  goals: {g1:72,g2:88,g3:45,g4:60},
+  checkedIn: [1,8,15],
+  prefs: [
+    {id:1,name:'Activate Portfolio Stoploss',score:10,cat:'Strength',icon:'🛡️',tags:['SWOT:S','Critical']},
+    {id:2,name:'Diversify Portfolio',score:8,cat:'Goal',icon:'🎯',tags:['Goal','Risk Mgmt']},
+    {id:3,name:'Research DeFi Airdrops',score:9,cat:'Opportunity',icon:'🚀',tags:['SWOT:O','Yield']},
+    {id:4,name:'Reduce Leverage Exposure',score:7,cat:'Weakness',icon:'⚠️',tags:['SWOT:W','Discipline']},
+    {id:5,name:'Study L2 Protocols',score:6,cat:'Opportunity',icon:'📚',tags:['SWOT:O','Research']},
+    {id:6,name:'Connect Phantom Wallet',score:4,cat:'Goal',icon:'👻',tags:['Setup','DeFi']}
+  ],
+  bio:'Crypto strategist using SWOT to navigate the markets. Building wealth mindfully. 🚀',
+  nextPrefId:7, nextTaskId:200
+};
+
+/* ─── Load / merge saved state ─── */
+let S = (()=>{
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULTS));
+    const saved = JSON.parse(raw);
+    const merged = Object.assign({},DEFAULTS,saved);
+    merged.swot  = Object.assign({},DEFAULTS.swot,  saved.swot  ||{});
+    merged.tasks = Object.assign({},DEFAULTS.tasks, saved.tasks ||{});
+    merged.goals = Object.assign({},DEFAULTS.goals, saved.goals ||{});
+    merged.prefs = saved.prefs || DEFAULTS.prefs;
+    merged.checkedIn = saved.checkedIn || DEFAULTS.checkedIn;
+    return merged;
+  } catch(e) { return JSON.parse(JSON.stringify(DEFAULTS)); }
+})();
+
+/* ─── Persist (debounced 400ms) ─── */
+let _saveT;
+function save(){
+  clearTimeout(_saveT);
+  _saveT = setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){} },400);
+}
+
+/* ─── Broadcast bus ─── */
+const BUS = {};
+function on(k,fn){ (BUS[k]=BUS[k]||[]).push(fn); }
+function emit(k){ (BUS[k]||[]).forEach(fn=>fn()); }
+
+/* ════ TOAST ════ */
 let _tt;
 function showToast(msg){
   const t=document.getElementById('toast');
@@ -1492,136 +1558,286 @@ function showToast(msg){
   _tt=setTimeout(()=>t.classList.remove('show'),2600);
 }
 
-/* ═══ SCREEN SWITCH ═══ */
+/* ════ SCREEN SWITCH ════ */
 function switchScreen(n){
   document.querySelectorAll('.screen').forEach((s,i)=>s.classList.toggle('active',i+1===n));
   document.querySelectorAll('.nav-item').forEach((el,i)=>el.classList.toggle('active',i+1===n));
   document.querySelectorAll('.page-scroll').forEach(s=>s.scrollTop=0);
+  if(n===1) syncHomeAll();
+  if(n===3) renderMatrix();
+  if(n===5) syncGoalsScreen();
+  if(n===6) renderAll();
 }
 
-/* ═══ EARN XP ═══ */
+/* ════ XP SYNC — updates every XP display across all screens ════ */
+function syncXP(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('xp-count',S.xp);
+  set('xp-hero-amount',S.xp+' XP');
+  set('ts-val',S.xp);
+  set('stat-tokens',S.xp);
+  set('stat-done',S.completedTasks);
+  set('hm-xp',S.xp);
+  set('hm-xplbl',S.xp+' / 400 XP');
+  const pct=Math.round((S.completedTasks/Math.max(1,S.totalTasks))*100);
+  set('stat-pct',pct+'%');
+  const fill=Math.min(96,(S.xp/400)*100);
+  const xpf=document.getElementById('hm-xpf');
+  if(xpf)xpf.style.width=fill+'%';
+  const tspf=document.getElementById('ts-pf');
+  if(tspf)tspf.style.width=fill+'%';
+  save();
+}
+
 function earnXP(amount){
-  totalXP+=amount;completedTasks++;
-  const upd=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  upd('xp-count',totalXP);
-  upd('xp-hero-amount',totalXP+' XP');
-  upd('ts-val',totalXP);
-  upd('stat-tokens',totalXP);
-  upd('stat-done',completedTasks);
-  upd('hm-xp',totalXP);
-  upd('hm-xplbl',totalXP+' / 400 XP');
-  const pct=Math.round((completedTasks/totalTasks)*100);
-  upd('stat-pct',pct+'%');
-  const f=document.getElementById('hm-xpf');
-  if(f)f.style.width=Math.min(96,62+completedTasks*3)+'%';
+  S.xp+=amount; S.completedTasks++;
+  syncXP();
+  // pulse the XP pill
+  const pill=document.getElementById('xp-count')?.closest?.('.xp-pill');
+  if(pill){pill.style.transform='scale(1.18)';setTimeout(()=>pill.style.transform='',300);}
 }
 
-/* ═══ HOME: SWOT COLLAPSE ═══ */
-function toggleSwotCollapse(){
-  const body=document.getElementById('swot-body');
-  const tog=document.getElementById('swot-tog');
-  const hidden=body.style.display==='none';
-  body.style.display=hidden?'':'none';
-  tog.textContent=hidden?'▲ Collapse':'▼ Expand';
+/* ════ HOME SYNC ════ */
+function syncHomeAll(){
+  syncXP();
+  syncHomeSwot();
+  syncHomeGoals();
+  syncHomeActivity();
 }
 
-/* ═══ SWOT ENTRY ═══ */
+function syncHomeSwot(){
+  const qMap={s:['tl-t','tl-bd','qsd-s'],w:['am-t','am-bd','qsd-w'],o:['vl-t','vl-bd','qsd-o'],t:['em-t','em-bd','qsd-t']};
+  const labels={s:'S · Strengths',w:'W · Weaknesses',o:'O · Opportunities',t:'T · Threats'};
+  ['s','w','o','t'].forEach(q=>{
+    const cont=document.querySelector(`#swot-body .qs-q.qs-${q}`);
+    if(!cont)return;
+    // re-render items (keep header)
+    const hdr=cont.querySelector('.qs-qh');
+    cont.innerHTML='';
+    if(hdr)cont.appendChild(hdr);
+    else{
+      const h=document.createElement('div');h.className='qs-qh';
+      h.innerHTML=`<div class="qs-dot ${qMap[q][2]}"></div>${labels[q]}`;
+      cont.appendChild(h);
+    }
+    (S.swot[q]||[]).forEach(txt=>{
+      const d=document.createElement('div');d.className='qs-item';d.textContent=txt;
+      cont.appendChild(d);
+    });
+  });
+  // update home badge count
+  const total=Object.values(S.swot).reduce((a,b)=>a+b.length,0);
+  const badge=document.querySelector('#s1 .gh-badge, #s1 [class*="badge"]');
+}
+
+function syncHomeGoals(){
+  const avg=Math.round(Object.values(S.goals).reduce((a,b)=>a+b,0)/4);
+  // Update goals % stat on home
+  const el=document.querySelector('#s1 .hst-v.e');
+  if(el)el.textContent=avg+'%';
+  // Update home goals progress bar
+  const gbar=document.querySelector('#s1 [style*="width:75%"]');
+  if(gbar)gbar.style.width=avg+'%';
+  // Update home goals label
+  const glbl=document.querySelector('#s1 [style*="justify-content:space-between"] span:last-child');
+}
+
+function syncHomeActivity(){
+  // nothing dynamic for now — activity feed is static
+}
+
+/* ════ SWOT ENTRY SCREEN ════ */
 const qLabels={s:'Strength',w:'Weakness',o:'Opportunity',t:'Threat'};
 const qDotColors={s:'var(--tl-bd)',w:'var(--am-bd)',o:'var(--vl-bd)',t:'var(--em-bd)'};
+
+function renderSwotScreen(){
+  ['s','w','o','t'].forEach(q=>{
+    const cont=document.getElementById('eq-'+q);
+    if(!cont)return;
+    const hdr=cont.querySelector('.eq-h');
+    const addBtn=cont.querySelector('.eq-add');
+    // Remove old items only
+    cont.querySelectorAll('.eq-item').forEach(el=>el.remove());
+    // Re-insert items before addBtn
+    (S.swot[q]||[]).forEach((txt,idx)=>{
+      const item=document.createElement('div');item.className='eq-item';
+      item.dataset.idx=idx;item.dataset.q=q;
+      item.innerHTML=`<div class="eq-dot" style="background:${qDotColors[q]}"></div><span class="eq-txt" contenteditable="true" onblur="editSwotItem('${q}',${idx},this)">${txt}</span><span class="eq-del" onclick="removeItem(this,'${q}',${idx})">×</span>`;
+      cont.insertBefore(item,addBtn);
+    });
+  });
+}
 
 function addSwotItem(addRow,q){
   const container=addRow.parentElement;
   const txt=prompt('Add a '+qLabels[q]+':');
   if(!txt||!txt.trim())return;
+  S.swot[q].push(txt.trim());
+  save();
   const item=document.createElement('div');item.className='eq-item';
-  item.innerHTML=`<div class="eq-dot" style="background:${qDotColors[q]}"></div><span class="eq-txt">${txt.trim()}</span><span class="eq-del" onclick="removeItem(this)">×</span>`;
+  const idx=S.swot[q].length-1;
+  item.innerHTML=`<div class="eq-dot" style="background:${qDotColors[q]}"></div><span class="eq-txt" contenteditable="true" onblur="editSwotItem('${q}',${idx},this)">${txt.trim()}</span><span class="eq-del" onclick="removeItem(this,'${q}',${idx})">×</span>`;
   item.style.opacity='0';item.style.transform='translateY(8px)';
   container.insertBefore(item,addRow);
   requestAnimationFrame(()=>{item.style.transition='all .25s ease';item.style.opacity='1';item.style.transform='none';});
   showToast('✅ '+qLabels[q]+' added!');
+  emit('swot');
 }
 
-function removeItem(btn){
+function editSwotItem(q,idx,el){
+  const newVal=el.textContent.trim();
+  if(!newVal){el.textContent=S.swot[q][idx];return;}
+  S.swot[q][idx]=newVal;
+  save();emit('swot');
+}
+
+function removeItem(btn,q,idx){
   const el=btn.closest('.eq-item');
   el.style.transition='all .2s';el.style.opacity='0';el.style.transform='translateX(12px)';
-  setTimeout(()=>el.remove(),210);
+  setTimeout(()=>{
+    if(q!==undefined&&idx!==undefined) S.swot[q].splice(idx,1);
+    el.remove();
+    save();emit('swot');
+    // re-index remaining items in this quad
+    const cont=document.getElementById('eq-'+(q||'s'));
+    if(cont){cont.querySelectorAll('.eq-item').forEach((it,i)=>{
+      const del=it.querySelector('.eq-del');
+      const span=it.querySelector('.eq-txt');
+      if(del)del.setAttribute('onclick',`removeItem(this,'${q}',${i})`);
+      if(span)span.setAttribute('onblur',`editSwotItem('${q}',${i},this)`);
+    });}
+  },210);
 }
 
 function saveSwot(){
   showToast('💾 SWOT saved! +20 🪙 tokens');
-  earnXP(20);
+  earnXP(20);save();emit('swot');
   setTimeout(()=>switchScreen(1),1200);
 }
 
-/* ═══ MATRIX: CHECK ═══ */
-function toggleCheck(el){
-  const c=el.classList.toggle('chk');el.textContent=c?'✓':'';
-  const title=el.closest('.task-card').querySelector('.tc-ttl');
-  title.classList.toggle('done',c);
-  if(c){earnXP(20);showToast('✅ Done! +20 🪙 $SWOT');}
+/* ════ MATRIX SCREEN ════ */
+const qzMap={do:{list:'tc-do',cnt:'cnt-do'},sc:{list:'tc-sc',cnt:'cnt-sc'},dg:{list:'tc-dg',cnt:'cnt-dg'},dp:{list:'tc-dp',cnt:'cnt-dp'}};
+
+function makeTaskCard(task,qKey){
+  const div=document.createElement('div');
+  div.className='task-card';div.draggable=true;div.dataset.id=task.id;div.dataset.q=qKey;
+  div.setAttribute('ondragstart','dragStart(event)');
+  div.innerHTML=`<div class="tc-top"><div class="tc-cb${task.done?' chk':''}" onclick="toggleCheck(this)">${task.done?'✓':''}</div><div class="tc-body"><div class="tc-ttl${task.done?' done':''}" contenteditable="true" onblur="editTaskText(this)">${task.text}</div><div class="tc-meta"><span class="tc-tag md">${task.tag}</span><span class="tc-date">${task.date}</span></div></div><span class="tc-del" onclick="deleteCard(this)">🗑️</span></div>`;
+  return div;
 }
 
-/* ═══ MATRIX: DELETE ═══ */
+function renderMatrix(){
+  ['do','sc','dg','dp'].forEach(qKey=>{
+    const listEl=document.getElementById('tc-'+qKey);
+    if(!listEl)return;
+    listEl.innerHTML='';
+    (S.tasks[qKey]||[]).forEach(task=>{
+      listEl.appendChild(makeTaskCard(task,qKey));
+    });
+    const cnt=document.getElementById('cnt-'+qKey);
+    if(cnt)cnt.textContent=(S.tasks[qKey]||[]).length;
+  });
+  updateTaskCount();
+  syncRewardsBars();
+}
+
+function editTaskText(el){
+  const card=el.closest('.task-card');
+  const id=card?.dataset?.id;const qKey=card?.dataset?.q;
+  if(!id||!qKey)return;
+  const task=(S.tasks[qKey]||[]).find(t=>t.id===id);
+  if(task){task.text=el.textContent.trim()||task.text;save();}
+}
+
+function toggleCheck(el){
+  const c=el.classList.toggle('chk');el.textContent=c?'✓':'';
+  const card=el.closest('.task-card');
+  const title=card.querySelector('.tc-ttl');
+  title.classList.toggle('done',c);
+  // persist
+  const id=card?.dataset?.id;const qKey=card?.dataset?.q;
+  if(id&&qKey){const task=(S.tasks[qKey]||[]).find(t=>t.id===id);if(task)task.done=c;}
+  save();
+  if(c){earnXP(20);showToast('✅ Done! +20 🪙 $SWOT');}
+  syncRewardsBars();
+}
+
 function deleteCard(btn){
   const card=btn.closest('.task-card');
+  const id=card?.dataset?.id;const qKey=card?.dataset?.q;
   card.style.transition='all .22s';card.style.opacity='0';card.style.transform='scale(.9)';
   setTimeout(()=>{
-    const cnt=card.closest('.mxq').querySelector('.mxq-cnt');
-    if(cnt){const n=parseInt(cnt.textContent)-1;cnt.textContent=Math.max(0,n);}
-    card.remove();updateTaskCount();
+    if(id&&qKey){const arr=S.tasks[qKey]||[];const i=arr.findIndex(t=>t.id===id);if(i!==-1)arr.splice(i,1);}
+    card.remove();
+    save();updateTaskCount();syncRewardsBars();
   },230);
   showToast('🗑️ Task removed');
 }
 
-/* ═══ MATRIX: ADD TASK ═══ */
 function addTaskCard(listId,cntId){
   const txt=prompt('New task name:');
   if(!txt||!txt.trim())return;
-  const isSC=listId==='tc-sc',isDG=listId==='tc-dg',isDP=listId==='tc-dp';
+  const qKey=listId.replace('tc-','');
+  const isSC=qKey==='sc',isDG=qKey==='dg',isDP=qKey==='dp';
   const dl=isSC?'📅 Soon':isDG?'📤 Share':isDP?'Someday':'Due soon';
   const tg=isSC?'📅 Med':isDG?'🤝 Delegate':isDP?'⬇ Low':'🟡 Med';
-  const card=document.createElement('div');card.className='task-card';card.draggable=true;
-  card.setAttribute('ondragstart','dragStart(event)');
-  card.innerHTML=`<div class="tc-top"><div class="tc-cb" onclick="toggleCheck(this)"></div><div class="tc-body"><div class="tc-ttl">${txt.trim()}</div><div class="tc-meta"><span class="tc-tag md">${tg}</span><span class="tc-date">${dl}</span></div></div><span class="tc-del" onclick="deleteCard(this)">🗑️</span></div>`;
+  const newTask={id:'u'+(S.nextTaskId++),text:txt.trim(),tag:tg,date:dl,done:false};
+  if(!S.tasks[qKey])S.tasks[qKey]=[];
+  S.tasks[qKey].push(newTask);
+  save();
+  const card=makeTaskCard(newTask,qKey);
   card.style.opacity='0';card.style.transform='translateY(8px)';
   document.getElementById(listId).appendChild(card);
   requestAnimationFrame(()=>{card.style.transition='all .25s ease';card.style.opacity='1';card.style.transform='none';});
   const cnt=document.getElementById(cntId);
-  if(cnt)cnt.textContent=parseInt(cnt.textContent)+1;
-  totalTasks++;updateTaskCount();showToast('📌 Task added!');
+  if(cnt)cnt.textContent=(S.tasks[qKey]||[]).length;
+  S.totalTasks++;updateTaskCount();showToast('📌 Task added!');
 }
 
-/* ═══ MATRIX: COUNT ═══ */
 function updateTaskCount(){
   const all=document.querySelectorAll('#s3 .task-card').length;
   const el=document.getElementById('mx-task-count');
   if(el)el.textContent=all+' task'+(all!==1?'s':'');
 }
 
-/* ═══ MATRIX: GENERATE ═══ */
+function syncRewardsBars(){
+  ['do','sc','dg','dp'].forEach(qKey=>{
+    const tasks=S.tasks[qKey]||[];
+    const done=tasks.filter(t=>t.done).length;
+    const pct=tasks.length?Math.round((done/tasks.length)*100):0;
+    const fillEl=document.getElementById(qKey+'-fill');
+    const pctEl=document.getElementById(qKey+'-pct');
+    if(fillEl)fillEl.style.width=pct+'%';
+    if(pctEl)pctEl.textContent=pct+'%';
+  });
+}
+
+/* ─── Generate from SWOT ─── */
 const genQ=[
-  {list:'tc-do',cnt:'cnt-do',text:'Activate stop-loss on volatile tokens',tag:'🔴 High',date:'Today'},
-  {list:'tc-sc',cnt:'cnt-sc',text:'Research DeFi yield opportunities',tag:'📅 Med',date:'Next week'},
-  {list:'tc-dg',cnt:'cnt-dg',text:'Join airdrop farming community',tag:'🤝 Delegate',date:'📤 Share'},
-  {list:'tc-dp',cnt:'cnt-dp',text:'Stop checking meme coin prices',tag:'⬇ Low',date:'Someday'},
+  {qKey:'do',text:'Activate stop-loss on volatile tokens',tag:'🔴 High',date:'Today'},
+  {qKey:'sc',text:'Research DeFi yield opportunities',tag:'📅 Med',date:'Next week'},
+  {qKey:'dg',text:'Join airdrop farming community',tag:'🤝 Delegate',date:'📤 Share'},
+  {qKey:'dp',text:'Stop checking meme coin prices',tag:'⬇ Low',date:'Someday'},
 ];
 let genIdx=0;
 function generateFromSwot(){
   if(genIdx>=genQ.length){showToast('✅ All SWOT tasks generated!');genIdx=0;return;}
   const t=genQ[genIdx++];
-  const card=document.createElement('div');card.className='task-card';card.draggable=true;
-  card.setAttribute('ondragstart','dragStart(event)');
-  card.innerHTML=`<div class="tc-top"><div class="tc-cb" onclick="toggleCheck(this)"></div><div class="tc-body"><div class="tc-ttl">${t.text}</div><div class="tc-meta"><span class="tc-tag md">${t.tag}</span><span class="tc-date">${t.date}</span></div></div><span class="tc-del" onclick="deleteCard(this)">🗑️</span></div>`;
+  const newTask={id:'g'+(S.nextTaskId++),text:t.text,tag:t.tag,date:t.date,done:false};
+  if(!S.tasks[t.qKey])S.tasks[t.qKey]=[];
+  S.tasks[t.qKey].push(newTask);save();
+  const card=makeTaskCard(newTask,t.qKey);
   card.style.opacity='0';card.style.transform='translateY(10px) scale(.96)';
-  document.getElementById(t.list).appendChild(card);
+  const list=document.getElementById('tc-'+t.qKey);
+  if(list)list.appendChild(card);
   requestAnimationFrame(()=>{card.style.transition='all .3s cubic-bezier(.34,1.4,.64,1)';card.style.opacity='1';card.style.transform='none';});
-  const cnt=document.getElementById(t.cnt);
-  if(cnt)cnt.textContent=parseInt(cnt.textContent)+1;
-  totalTasks++;updateTaskCount();
+  const cnt=document.getElementById('cnt-'+t.qKey);
+  if(cnt)cnt.textContent=(S.tasks[t.qKey]||[]).length;
+  S.totalTasks++;updateTaskCount();
   showToast(`⚡ Generated ${genIdx}/${genQ.length} from SWOT`);
 }
 
-/* ═══ MATRIX: FILTER ═══ */
+/* ─── Filter ─── */
 function filterTasks(v){
   v=v.trim().toLowerCase();
   document.querySelectorAll('.task-card').forEach(c=>{
@@ -1630,7 +1846,7 @@ function filterTasks(v){
   });
 }
 
-/* ═══ SORT MODAL ═══ */
+/* ─── Sort ─── */
 function openSort(){document.getElementById('sortModal').classList.add('open');}
 function pickSort(el,type){
   document.querySelectorAll('.sort-opt').forEach(o=>o.classList.remove('sel'));
@@ -1638,13 +1854,25 @@ function pickSort(el,type){
   setTimeout(()=>document.getElementById('sortModal').classList.remove('open'),320);
 }
 
-/* ═══ DRAG & DROP ═══ */
+/* ─── Drag & Drop ─── */
 let dragged=null;
 function dragStart(e){dragged=e.currentTarget;e.currentTarget.style.opacity='.4';e.dataTransfer.effectAllowed='move';}
 document.addEventListener('dragend',e=>{if(e.target.classList.contains('task-card'))e.target.style.opacity='1';});
 function dropCard(e,zoneId){
   e.preventDefault();const zone=document.getElementById(zoneId);
-  if(dragged&&!zone.contains(dragged)){zone.appendChild(dragged);dragged.style.opacity='1';updateTaskCount();showToast('📌 Task moved!');}
+  if(!dragged||zone.contains(dragged))return;
+  const fromQ=dragged.dataset.q;const toQ=zoneId.replace('tc-','');
+  // move in state
+  if(fromQ&&toQ&&fromQ!==toQ){
+    const id=dragged.dataset.id;
+    const fromArr=S.tasks[fromQ]||[];const idx=fromArr.findIndex(t=>t.id===id);
+    if(idx!==-1){const [task]=fromArr.splice(idx,1);task.q=toQ;dragged.dataset.q=toQ;(S.tasks[toQ]=S.tasks[toQ]||[]).push(task);}
+    save();
+    const fc=document.getElementById('cnt-'+fromQ);const tc=document.getElementById('cnt-'+toQ);
+    if(fc)fc.textContent=(S.tasks[fromQ]||[]).length;
+    if(tc)tc.textContent=(S.tasks[toQ]||[]).length;
+  }
+  zone.appendChild(dragged);dragged.style.opacity='1';updateTaskCount();showToast('📌 Task moved!');
 }
 /* Touch drag */
 let tD=null,tCl=null,ox=0,oy=0;
@@ -1663,45 +1891,75 @@ document.addEventListener('touchend',e=>{
   if(!tCl||!tD)return;const t=e.changedTouches[0];tCl.remove();tCl=null;tD.style.opacity='1';
   const el=document.elementFromPoint(t.clientX,t.clientY);
   const zone=el&&el.closest('.tc-list');
-  if(zone&&!zone.contains(tD)){zone.appendChild(tD);updateTaskCount();showToast('📌 Task moved!');}
+  if(zone&&!zone.contains(tD)){
+    const fromQ=tD.dataset.q;const toQ=zone.id.replace('tc-','');
+    if(fromQ&&toQ&&fromQ!==toQ){
+      const id=tD.dataset.id;const fromArr=S.tasks[fromQ]||[];const idx=fromArr.findIndex(t=>t.id===id);
+      if(idx!==-1){const [task]=fromArr.splice(idx,1);tD.dataset.q=toQ;(S.tasks[toQ]=S.tasks[toQ]||[]).push(task);}
+      save();
+      const fc=document.getElementById('cnt-'+fromQ);const tc=document.getElementById('cnt-'+toQ);
+      if(fc)fc.textContent=(S.tasks[fromQ]||[]).length;
+      if(tc)tc.textContent=(S.tasks[toQ]||[]).length;
+    }
+    zone.appendChild(tD);updateTaskCount();showToast('📌 Task moved!');
+  }
   tD=null;
 });
 
-/* ═══ CALENDAR ═══ */
+/* ════ CALENDAR ════ */
 (function buildCal(){
   const grid=document.getElementById('calGrid');if(!grid)return;
-  const today=27;const checkedIn=[1,8,15];const sundays=[1,8,15,22];
+  const today=27;const sundays=[1,8,15,22];
   for(let d=1;d<=28;d++){
     const cell=document.createElement('div');
     const dow=(d-1)%7;
     let cls='cday';
-    if(d===today)cls+=' td';
-    else if(checkedIn.includes(d))cls+=' ck';
-    else if(sundays.includes(d)||dow===0)cls+=' sun';
+    if(d===today) cls+=' td';
+    else if(S.checkedIn.includes(d)) cls+=' ck';
+    else if(sundays.includes(d)||dow===0) cls+=' sun';
     cell.className=cls;cell.textContent=d;
     cell.onclick=()=>{
-      if(d===today)showToast('📍 Today — mark check-in!');
-      else if(checkedIn.includes(d))showToast(`✅ Feb ${d} — Checked in!`);
-      else if(d<today)showToast(`📅 Feb ${d} — Missed check-in`);
-      else showToast(`⏳ Feb ${d} — Upcoming`);
+      if(d===today){
+        if(!S.checkedIn.includes(d)){S.checkedIn.push(d);cell.className='cday ck';save();showToast('📍 Checked in today! 🔥');}
+        else showToast('✅ Already checked in today!');
+      } else if(S.checkedIn.includes(d)){
+        showToast(`✅ Feb ${d} — Checked in!`);
+      } else if(d<today){
+        showToast(`📅 Feb ${d} — Missed check-in`);
+      } else {
+        showToast(`⏳ Feb ${d} — Upcoming`);
+      }
     };
     grid.appendChild(cell);
   }
 })();
 
-/* ═══ GOALS SLIDER ═══ */
+/* ════ GOALS SCREEN ════ */
 function adjustSlider(track,event,id){
   const rect=track.getBoundingClientRect();
   const x=event.clientX-rect.left;
   const pct=Math.min(100,Math.max(0,Math.round(x/rect.width*100)));
   const fill=track.querySelector('.sl-fill');
   if(fill)fill.style.width=pct+'%';
+  const key='g'+id;
+  S.goals[key]=pct;
+  save();emit('goals');
   const pctEl=document.getElementById('g'+id+'pct');
   if(pctEl){pctEl.textContent=pct+'%';pctEl.className='gc-pct '+(pct>=70?'pct-g':pct>=40?'pct-gd':'pct-lo');}
-  showToast(`📊 Progress: ${pct}%`);
+  showToast(`📊 Goal ${id} → ${pct}%`);
 }
 
-/* ═══ QUOTE CYCLER ═══ */
+function syncGoalsScreen(){
+  [1,2,3,4].forEach(id=>{
+    const pct=S.goals['g'+id]||0;
+    const fill=document.getElementById('sf'+id);
+    if(fill)fill.style.width=pct+'%';
+    const pctEl=document.getElementById('g'+id+'pct');
+    if(pctEl){pctEl.textContent=pct+'%';pctEl.className='gc-pct '+(pct>=70?'pct-g':pct>=40?'pct-gd':'pct-lo');}
+  });
+}
+
+/* ════ QUOTE CYCLER ════ */
 const quotes=[
   {text:'Build <span class="hl">Tenacity</span> — the market rewards those who outlast the storm, not those who time it.',attr:'— SWOT Crypto · Feb 2026'},
   {text:'<span class="hl">Discipline</span> is choosing between what you want now and what you want most.',attr:'— Crypto Mindset · Feb 2026'},
@@ -1721,15 +1979,17 @@ function cycleQuote(idx){
   document.querySelectorAll('.qd').forEach((d,i)=>{d.className='qd '+(i===idx?'a':'i');});
 }
 
-/* ═══ SCALE OF PREFERENCE DATA ═══ */
-let items=[
-  {id:1,name:'Activate Portfolio Stoploss',score:10,cat:'Strength',icon:'🛡️',tags:['SWOT:S','Critical']},
-  {id:2,name:'Diversify Portfolio',score:8,cat:'Goal',icon:'🎯',tags:['Goal','Risk Mgmt']},
-  {id:3,name:'Research DeFi Airdrops',score:9,cat:'Opportunity',icon:'🚀',tags:['SWOT:O','Yield']},
-  {id:4,name:'Reduce Leverage Exposure',score:7,cat:'Weakness',icon:'⚠️',tags:['SWOT:W','Discipline']},
-  {id:5,name:'Study L2 Protocols',score:6,cat:'Opportunity',icon:'📚',tags:['SWOT:O','Research']},
-  {id:6,name:'Connect Phantom Wallet',score:4,cat:'Goal',icon:'👻',tags:['Setup','DeFi']},
-];
+/* ════ HOME SWOT COLLAPSE ════ */
+function toggleSwotCollapse(){
+  const body=document.getElementById('swot-body');
+  const tog=document.getElementById('swot-tog');
+  const hidden=body.style.display==='none';
+  body.style.display=hidden?'':'none';
+  tog.textContent=hidden?'▲ Collapse':'▼ Expand';
+}
+
+/* ════ SCALE OF PREFERENCE ════ */
+let items=S.prefs;
 const swotPool=[
   {name:'DCA Strategy Review',cat:'Opportunity',icon:'📈',source:'O'},
   {name:'Manage FOMO Tendencies',cat:'Weakness',icon:'😰',source:'W'},
@@ -1737,11 +1997,9 @@ const swotPool=[
   {name:'Join Airdrop Community',cat:'Opportunity',icon:'🎁',source:'O'},
   {name:'Long-term Conviction Check',cat:'Strength',icon:'💎',source:'S'},
 ];
-let nextId=7;let currentSort='score';let selectedCat='Opportunity';
+let currentSort='score';let selectedCat='Opportunity';
 
-function getScoreColor(s){
-  if(s>=9)return'#00c8ac';if(s>=7)return'#22d3a8';if(s>=5)return'#d4af37';if(s>=3)return'#f97316';return'#c05a08';
-}
+function getScoreColor(s){if(s>=9)return'#00c8ac';if(s>=7)return'#22d3a8';if(s>=5)return'#d4af37';if(s>=3)return'#f97316';return'#c05a08';}
 function getScoreWord(s){
   if(s===10)return{word:'CRITICAL',bg:'#DCF5F2',color:'#008A82'};
   if(s>=8)return{word:'HIGH',bg:'#DCF5F2',color:'#008A82'};
@@ -1765,7 +2023,8 @@ function sortBy(mode){
 
 function renderChart(){
   const sorted=[...items].sort((a,b)=>b.score-a.score);
-  document.getElementById('chartBody').innerHTML=sorted.map(item=>{
+  const body=document.getElementById('chartBody');if(!body)return;
+  body.innerHTML=sorted.map(item=>{
     const pct=(item.score/10)*100;const c=getScoreColor(item.score);
     return`<div class="bar-row"><span class="bar-em">${item.icon}</span><span class="bar-lb">${item.name.length>14?item.name.slice(0,13)+'…':item.name}</span><div class="bar-tr"><div class="bar-f" style="width:${pct}%;background:linear-gradient(90deg,${c},${c}bb);"><span class="bar-s">${item.score}</span></div></div><span class="bar-n" style="color:${c};">${item.score}</span></div>`;
   }).join('');
@@ -1773,7 +2032,7 @@ function renderChart(){
 
 function renderCards(){
   const sorted=currentSort==='score'?[...items].sort((a,b)=>b.score-a.score):currentSort==='alpha'?[...items].sort((a,b)=>a.name.localeCompare(b.name)):[...items].sort((a,b)=>a.cat.localeCompare(b.cat));
-  const list=document.getElementById('cardsList');
+  const list=document.getElementById('cardsList');if(!list)return;
   const il=document.getElementById('itemCountLabel');
   if(il)il.textContent=sorted.length+' items';
   list.innerHTML=sorted.map((item,idx)=>{
@@ -1782,8 +2041,7 @@ function renderCards(){
     const tks=item.tags.map(t=>`<span class="pol-tg">${t}</span>`).join('');
     const ticks=[1,2,3,4,5,6,7,8,9,10].map(n=>`<span class="pol-tk${n===item.score?' at':''}">${n}</span>`).join('');
     return`<div class="pol-card" id="card-${item.id}" style="transform:rotate(${rot});border-radius:12px;overflow:hidden;">
-      <div class="pol-pin"></div>
-      <div class="pol-rb" style="background:${c};">#${rank}</div>
+      <div class="pol-pin"></div><div class="pol-rb" style="background:${c};">#${rank}</div>
       <div class="pol-strip" style="background:linear-gradient(90deg,${c},${c}88);"></div>
       <div class="pol-body">
         <div class="pol-hr">
@@ -1794,43 +2052,31 @@ function renderCards(){
         <div class="pol-sr"><span class="pol-sl">Preference Score</span><div class="pol-sd"><span class="pol-sn" id="snum-${item.id}" style="color:${c};">${item.score}</span><span class="pol-sd2">/10</span><span class="pol-sw" style="background:${sw.bg};color:${sw.color};" id="swd-${item.id}">${sw.word}</span></div></div>
         <div class="pol-slw">
           <div class="pol-slt"></div>
-          <div class="pol-slf" id="sfill-${item.id}" style="width:${pct}%;background:linear-gradient(90deg,${c},${c}cc);color:${c};"></div>
+          <div class="pol-slf" id="sfill-${item.id}" style="width:${pct}%;background:linear-gradient(90deg,${c},${c}cc);"></div>
           <input type="range" class="pol-slr" id="slider-${item.id}" min="1" max="10" step="1" value="${item.score}" style="color:${c};" aria-label="${item.name} score ${item.score}/10" oninput="updateScore(${item.id},this.value)">
         </div>
         <div class="pol-ticks">${ticks}</div>
-        <div class="pol-step">
-          <div class="step-b" onclick="stepScore(${item.id},-1)">−</div>
-          <span class="step-h">Tap ±1 or drag slider</span>
-          <div class="step-b" onclick="stepScore(${item.id},1)">＋</div>
-        </div>
+        <div class="pol-step"><div class="step-b" onclick="stepScore(${item.id},-1)">−</div><span class="step-h">Tap ±1 or drag slider</span><div class="step-b" onclick="stepScore(${item.id},1)">＋</div></div>
       </div>
       <div class="pol-foot">${tks}<div class="pol-del" onclick="deletePrefItem(${item.id})">🗑️</div></div>
       <div class="pol-wstrip"><span class="pol-stamp">SWOT · CRYPTO · PLANNER</span></div>
     </div>`;
   }).join('');
-  /* bind slider thumb color */
-  sorted.forEach(item=>{
-    const sl=document.getElementById('slider-'+item.id);
-    if(sl)sl.style.color=getScoreColor(item.score);
-  });
+  sorted.forEach(item=>{const sl=document.getElementById('slider-'+item.id);if(sl)sl.style.color=getScoreColor(item.score);});
 }
 
 function updateScore(id,val){
   const item=items.find(i=>i.id===id);if(!item)return;
   item.score=parseInt(val);const c=getScoreColor(item.score);const sw=getScoreWord(item.score);const pct=(item.score/10)*100;
   const upd=(elId,prop,v)=>{const el=document.getElementById(elId);if(el)el[prop]=v;};
-  upd('snum-'+id,'textContent',item.score);
-  upd('snum-'+id,'style.color',c);
-  upd('swd-'+id,'textContent',sw.word);
-  upd('swd-'+id,'style.background',sw.bg);
-  upd('swd-'+id,'style.color',sw.color);
+  upd('snum-'+id,'textContent',item.score);upd('snum-'+id,'style.color',c);
+  upd('swd-'+id,'textContent',sw.word);upd('swd-'+id,'style.background',sw.bg);upd('swd-'+id,'style.color',sw.color);
   const f=document.getElementById('sfill-'+id);
   if(f){f.style.width=pct+'%';f.style.background=`linear-gradient(90deg,${c},${c}cc)`;}
-  const sl=document.getElementById('slider-'+id);
-  if(sl)sl.style.color=c;
-  // update ticks
+  const sl=document.getElementById('slider-'+id);if(sl)sl.style.color=c;
   const card=document.getElementById('card-'+id);
-  if(card){card.querySelectorAll('.pol-tk').forEach((tk,i)=>{tk.className='pol-tk'+(i+1===item.score?' at':'');});}
+  if(card)card.querySelectorAll('.pol-tk').forEach((tk,i)=>{tk.className='pol-tk'+(i+1===item.score?' at':'');});
+  S.prefs=items;save();
 }
 
 function stepScore(id,delta){
@@ -1845,40 +2091,47 @@ function deletePrefItem(id){
   const idx=items.findIndex(i=>i.id===id);if(idx===-1)return;
   const card=document.getElementById('card-'+id);
   if(card){card.style.transition='all .22s';card.style.opacity='0';card.style.transform='scale(.9) translateY(-8px)';}
-  setTimeout(()=>{items.splice(idx,1);renderAll();showToast('🗑️ Item removed');},230);
+  setTimeout(()=>{items.splice(idx,1);S.prefs=items;save();renderAll();showToast('🗑️ Item removed');},230);
 }
 
 function renderAll(){renderChart();renderCards();}
 
 function openAddModal(){document.getElementById('addModal').classList.add('open');document.getElementById('newItemName').value='';}
-function selectCat(el){
-  document.querySelectorAll('.sh-cat').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');
-  selectedCat=el.dataset.cat;
-}
+function selectCat(el){document.querySelectorAll('.sh-cat').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');selectedCat=el.dataset.cat;}
 function addPrefItem(){
   const name=document.getElementById('newItemName').value.trim();
   if(!name)return showToast('⚠️ Enter an item name');
   const icons={Opportunity:'🚀',Strength:'💪',Weakness:'⚠️',Threat:'🛡️',Goal:'🎯'};
-  items.push({id:nextId++,name,score:5,cat:selectedCat,icon:icons[selectedCat]||'📌',tags:[selectedCat]});
+  const newItem={id:S.nextPrefId++,name,score:5,cat:selectedCat,icon:icons[selectedCat]||'📌',tags:[selectedCat]};
+  items.push(newItem);S.prefs=items;save();
   document.getElementById('addModal').classList.remove('open');
   renderAll();showToast('✅ '+name+' added!');
 }
 
 function openSwotImport(){
   const opts=document.getElementById('swotOpts');
-  opts.innerHTML=swotPool.map((it,i)=>`<div class="swot-opt" onclick="importSwotItem(${i})"><span style="font-size:18px;">${it.icon}</span><div><div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--label);">${it.name}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--label-muted);">SWOT:${it.source} · ${it.cat}</div></div></div>`).join('');
+  // Build pool from live SWOT data + static pool
+  const liveItems=[
+    ...S.swot.s.map(n=>({name:n,cat:'Strength',icon:'💪',source:'S'})),
+    ...S.swot.w.map(n=>({name:n,cat:'Weakness',icon:'⚠️',source:'W'})),
+    ...S.swot.o.map(n=>({name:n,cat:'Opportunity',icon:'🚀',source:'O'})),
+    ...S.swot.t.map(n=>({name:n,cat:'Threat',icon:'🛡️',source:'T'})),
+    ...swotPool
+  ].filter(it=>!items.find(ex=>ex.name===it.name));
+  opts.innerHTML=liveItems.length?liveItems.map((it,i)=>`<div class="swot-opt" onclick="importSwotItem(${i})"><span style="font-size:18px;">${it.icon}</span><div><div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--label);">${it.name}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--label-muted);">SWOT:${it.source} · ${it.cat}</div></div></div>`).join(''):'<div style="padding:12px;font-family:\'IBM Plex Sans\',sans-serif;font-size:12px;color:var(--label-muted);">All SWOT items already imported.</div>';
+  window._importPool=liveItems;
   document.getElementById('swotModal').classList.add('open');
 }
 function importSwotItem(idx){
-  const it=swotPool[idx];
-  items.push({id:nextId++,name:it.name,score:6,cat:it.cat,icon:it.icon,tags:['SWOT:'+it.source,it.cat]});
+  const it=window._importPool[idx];if(!it)return;
+  const newItem={id:S.nextPrefId++,name:it.name,score:6,cat:it.cat,icon:it.icon,tags:['SWOT:'+it.source,it.cat]};
+  items.push(newItem);S.prefs=items;save();
   document.getElementById('swotModal').classList.remove('open');
   renderAll();showToast('⬇ '+it.name+' imported!');
 }
 
 function runAIPrioritize(){
-  const btn=document.getElementById('aiBtn');const ov=document.getElementById('aiOverlay');
-  const msgs=document.getElementById('aiMsg');
+  const btn=document.getElementById('aiBtn');const ov=document.getElementById('aiOverlay');const msgs=document.getElementById('aiMsg');
   btn.classList.add('loading');ov.classList.add('open');
   const steps=['Analysing market trends…','Evaluating SWOT matrix…','Calculating risk scores…','Prioritizing your items…'];
   let si=0;const iv=setInterval(()=>{if(msgs)msgs.textContent=steps[Math.min(si++,steps.length-1)];},750);
@@ -1889,45 +2142,54 @@ function runAIPrioritize(){
       else if(item.cat==='Threat')item.score=Math.max(1,item.score-1);
       else if(item.cat==='Opportunity')item.score=Math.min(10,item.score+Math.round(Math.random()*2));
     });
-    renderAll();showToast('⚡ AI prioritization complete!');
+    S.prefs=items;save();renderAll();showToast('⚡ AI prioritization complete!');
   },3200);
 }
 
 function exportReport(){showToast('⏳ Generating ranking image…');setTimeout(()=>showToast('📥 Ranking image ready!'),1800);}
 
-/* ═══ PROFILE ═══ */
+/* ════ PROFILE ════ */
+document.getElementById('ph-bio').value=S.bio||'';
 document.getElementById('ph-bio').addEventListener('input',function(){
   const sv=document.getElementById('ph-bsv');
   if(sv)sv.classList.toggle('vis',this.value.length>0);
 });
 function saveBio(){
-  showToast('💾 Bio saved!');
+  S.bio=document.getElementById('ph-bio').value;
+  save();showToast('💾 Bio saved!');
   const sv=document.getElementById('ph-bsv');if(sv)sv.classList.remove('vis');
 }
 
-/* ═══ ACCORDION ═══ */
+/* ════ ACCORDION ════ */
 function toggleAcc(trig){
   const body=trig.nextElementSibling;const ch=trig.querySelector('.acc-ch');
   const isOpen=body.classList.contains('open');
-  // close all
   document.querySelectorAll('.acc-body').forEach(b=>b.classList.remove('open'));
   document.querySelectorAll('.acc-ch').forEach(c=>c.classList.remove('open'));
   if(!isOpen){body.classList.add('open');if(ch)ch.classList.add('open');}
 }
 
-/* ═══ THEME / ACCENT ═══ */
+/* ════ THEME / ACCENT ════ */
 function setTheme(theme,btn){
-  document.querySelectorAll('.th-btn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');showToast('🎨 Theme: '+btn.textContent.trim());
+  document.querySelectorAll('.th-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  S.theme=theme;save();showToast('🎨 Theme: '+btn.textContent.trim());
 }
 function setAccent(color,btn){
-  document.querySelectorAll('.sw-c').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');showToast('🎨 Accent color updated');
+  document.querySelectorAll('.sw-c').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  S.accent=color;save();showToast('🎨 Accent color updated');
 }
 
-/* ═══ INIT ═══ */
-updateTaskCount();
+/* ════ BUS SUBSCRIPTIONS ════ */
+on('swot',()=>{ syncHomeSwot(); renderSwotScreen(); });
+on('goals',()=>{ syncHomeGoals(); });
+on('xp',()=>{ syncXP(); });
+
+/* ════ INIT ════ */
+syncXP();
+renderMatrix();
+renderSwotScreen();
 renderAll();
+syncGoalsScreen();
 </script>
 </body>
 </html>
